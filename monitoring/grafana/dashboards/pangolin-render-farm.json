@@ -1,0 +1,781 @@
+{
+  "title": "Pangolin Render Farm",
+  "tags": [
+    "pangolin",
+    "flamenco",
+    "render-farm"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "type": "stat",
+      "title": "Farm Status",
+      "targets": [
+        {
+          "expr": "flamenco_farm_status_raw",
+          "refId": "A",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "name",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "active"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "idle"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "starting"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "waiting"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "asleep"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "inoperative"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unknown"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "type": "stat",
+      "title": "Active Workers",
+      "targets": [
+        {
+          "expr": "flamenco_workers_active",
+          "refId": "A",
+          "legendFormat": "Active Workers"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "type": "stat",
+      "title": "Total Jobs",
+      "targets": [
+        {
+          "expr": "flamenco_jobs_total",
+          "refId": "A",
+          "legendFormat": "Total Jobs"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "type": "stat",
+      "title": "Task Completion Rate",
+      "targets": [
+        {
+          "expr": "flamenco_task_completion_rate * 100",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "red"
+              },
+              {
+                "value": 50,
+                "color": "yellow"
+              },
+              {
+                "value": 80,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "type": "piechart",
+      "title": "Worker Status Distribution",
+      "targets": [
+        {
+          "expr": "flamenco_worker_status",
+          "refId": "A",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "pieType": "pie",
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "type": "piechart",
+      "title": "Task Status Distribution",
+      "targets": [
+        {
+          "expr": "flamenco_task_status",
+          "refId": "A",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "pieType": "pie",
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 8
+      },
+      "type": "bargauge",
+      "title": "Task Pipeline (Sampled)",
+      "targets": [
+        {
+          "expr": "flamenco_task_pipeline_sampled",
+          "refId": "A",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Task Completion/Failure Rate",
+      "targets": [
+        {
+          "expr": "flamenco_task_completion_rate",
+          "refId": "A",
+          "legendFormat": "Completion Rate"
+        },
+        {
+          "expr": "flamenco_task_failure_rate",
+          "refId": "B",
+          "legendFormat": "Failure Rate"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": 9,
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Active Workers Over Time",
+      "targets": [
+        {
+          "expr": "flamenco_workers_active",
+          "refId": "A",
+          "legendFormat": "Active Workers"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Container Memory Usage",
+      "targets": [
+        {
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(container_memory_usage_bytes{name=~\"pangolin.*\"}, \"display_name\", \"Pangolin Backend\", \"name\", \".*pangolin-backend.*\"), \"display_name\", \"Grafana\", \"name\", \".*pangolin-grafana.*\"), \"display_name\", \"cAdvisor\", \"name\", \".*pangolin-cadvisor.*\"), \"display_name\", \"Flamenco Manager\", \"name\", \".*pangolin-flamenco-manager.*\"), \"display_name\", \"Flamenco Exporter\", \"name\", \".*pangolin-flamenco-exporter.*\"), \"display_name\", \"Prometheus\", \"name\", \".*pangolin-prometheus.*\")",
+          "refId": "A",
+          "legendFormat": "{{display_name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Container CPU Usage",
+      "targets": [
+        {
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(sum by (name)(rate(container_cpu_usage_seconds_total{name=~\"pangolin.*\",image!=\"\"}[5m])) * 100, \"display_name\", \"Pangolin Backend\", \"name\", \".*pangolin-backend.*\"), \"display_name\", \"Grafana\", \"name\", \".*pangolin-grafana.*\"), \"display_name\", \"cAdvisor\", \"name\", \".*pangolin-cadvisor.*\"), \"display_name\", \"Flamenco Manager\", \"name\", \".*pangolin-flamenco-manager.*\"), \"display_name\", \"Flamenco Exporter\", \"name\", \".*pangolin-flamenco-exporter.*\"), \"display_name\", \"Prometheus\", \"name\", \".*pangolin-prometheus.*\")",
+          "refId": "A",
+          "legendFormat": "{{display_name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Worker RAM Usage (Live)",
+      "targets": [
+        {
+          "expr": "flamenco_worker_memory_usage_bytes{worker_num!=\"\"}",
+          "refId": "A",
+          "legendFormat": "Pangolin Worker {{worker_num}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Worker CPU Usage (Live)",
+      "targets": [
+        {
+          "expr": "flamenco_worker_cpu_usage_percent{worker_num!=\"\"}",
+          "refId": "A",
+          "legendFormat": "Pangolin Worker {{worker_num}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 14,
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 8,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "API Request Rate",
+      "targets": [
+        {
+          "expr": "rate(flamenco_api_requests_total[5m])",
+          "refId": "A",
+          "legendFormat": "{{endpoint}} - {{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "gridPos": {
+        "x": 8,
+        "y": 44,
+        "w": 8,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Flamenco API Response Time",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(flamenco_api_request_duration_seconds_bucket[5m]))",
+          "refId": "A",
+          "legendFormat": "{{endpoint}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "gridPos": {
+        "x": 16,
+        "y": 44,
+        "w": 8,
+        "h": 8
+      },
+      "type": "stat",
+      "title": "Exporter Metrics",
+      "targets": [
+        {
+          "expr": "flamenco_task_sampling_active",
+          "refId": "A",
+          "legendFormat": "Sampling Active"
+        },
+        {
+          "expr": "flamenco_task_sample_size",
+          "refId": "B",
+          "legendFormat": "Sample Size"
+        },
+        {
+          "expr": "flamenco_jobs_sampled",
+          "refId": "C",
+          "legendFormat": "Jobs Sampled"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Task Sampling Active"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "value": "1",
+                    "text": "Active"
+                  },
+                  {
+                    "type": "value",
+                    "value": "0",
+                    "text": "Inactive"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Worker Last Seen",
+      "targets": [
+        {
+          "expr": "time() - flamenco_worker_last_seen_timestamp{worker_num!=\"\"}",
+          "refId": "A",
+          "legendFormat": "Pangolin Worker {{worker_num}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "displayName": "${__series.name}",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 60,
+                "color": "yellow"
+              },
+              {
+                "value": 300,
+                "color": "red"
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line+area"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "gridPos": {
+        "x": 12,
+        "y": 52,
+        "w": 12,
+        "h": 8
+      },
+      "type": "bargauge",
+      "title": "Workers per Tag",
+      "targets": [
+        {
+          "expr": "flamenco_worker_tag_count",
+          "refId": "A",
+          "legendFormat": "{{tag_name}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "uid": "pangolin-render-farm",
+  "id": null
+}
