@@ -1,0 +1,24 @@
+_meta:
+  version: 3
+
+manager_name: "Pangolin Flamenco Manager"
+database: "/shared/flamenco-manager.db"
+listen: ":8080"
+autodiscoverable: true
+shared_storage_path: "/shared"
+local_manager_storage_path: "/shared/manager-storage"
+
+authentication:
+  method: open
+
+variables:
+  blender:
+    values:
+      - platform: linux
+        value: "/blender/blender"
+  blenderArgs:
+    values:
+      - platform: all
+        value: "-b -y"
+
+platforms: ["linux"]
