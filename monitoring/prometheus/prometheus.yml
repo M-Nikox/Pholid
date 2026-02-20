@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'pangolin'
+    environment: 'production'
+
+scrape_configs:
+  # Pangolin Backend API Metrics
+  - job_name: 'pangolin-backend'
+    static_configs:
+      - targets: ['backend:3001']
+    metrics_path: '/api/metrics'
+    scrape_interval: 10s
+    
+  # Flamenco Exporter (custom metrics from Flamenco Manager API)
+  - job_name: 'flamenco-exporter'
+    static_configs:
+      - targets: ['flamenco-exporter:9090']
+    scrape_interval: 15s
+    
+  # Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+      
+  # cAdvisor - Container Metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 10s
+    
+  # Redis Metrics (if redis-exporter is added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 15s
