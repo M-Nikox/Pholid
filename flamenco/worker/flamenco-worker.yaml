@@ -1,0 +1,12 @@
+_meta:
+  version: 3
+
+worker_name: "Pangolin Worker"
+manager_url: "http://flamenco-manager:8080"
+
+# Authentication - MUST MATCH manager exactly
+authentication:
+  method: open
+
+task_types: ["blender", "file-management", "simple", "ffmpeg"]
+blender_executable: "/blender/blender"  # Direct path, no variables needed
