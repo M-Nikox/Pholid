@@ -192,6 +192,11 @@ class FlamencoMetricsCollector:
             else:
                 priority_counts['urgent'] += 1
         
+        # Clear stale label series before updating — prevents accumulation
+        # of old statuses that no longer exist in the current scrape
+        job_status.clear()
+        job_priority.clear()
+
         # Update status metrics
         for status, count in status_counts.items():
             job_status.labels(status=status).set(count)
@@ -259,6 +264,9 @@ class FlamencoMetricsCollector:
             # Real CPU/memory from cAdvisor via Prometheus
             self._collect_worker_cadvisor_metrics(worker_id, worker_name, worker_num)
 
+        # Clear stale worker status labels before updating
+        worker_status.clear()
+
         for status, count in status_counts.items():
             worker_status.labels(status=status).set(count)
 
@@ -279,8 +287,9 @@ class FlamencoMetricsCollector:
                 f'sum by (container_label_com_docker_compose_container_number) ('
                 f'rate(container_cpu_usage_seconds_total{{'
                 f'container_label_com_docker_compose_service="flamenco-worker",'
-                f'container_label_com_docker_compose_container_number="{container_num}"'
-                f'}}[1m])) * 100'
+                f'container_label_com_docker_compose_container_number="{container_num}",'
+                f'image!=""'
+                f'}}[2m])) * 100'
             )
             cpu_resp = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={'query': cpu_query}, timeout=REQUEST_TIMEOUT)
             cpu_resp.raise_for_status()
@@ -360,6 +369,10 @@ class FlamencoMetricsCollector:
         # Update metrics
         task_total.set(len(all_tasks))
         
+        # Clear stale task status labels before updating
+        task_status.clear()
+        task_pipeline_sampled.clear()
+
         for status, count in status_counts.items():
             task_status.labels(status=status).set(count)
             task_pipeline_sampled.labels(status=status).set(count)
@@ -384,32 +397,23 @@ class FlamencoMetricsCollector:
 
         try:
             data = self.api.get_farm_status()
+            # Clear all previous label series before setting new state.
+            # This prevents stale labels from accumulating in Prometheus.
+            farm_status.clear()
+            farm_status_raw.clear()
             if data and 'status' in data:
                 status = data['status']
                 is_healthy = 1 if status in HEALTHY_STATUSES else 0
-
-                # Zero out the previous status label before setting the new one.
-                # Without this, both old and new status labels persist in Prometheus
-                # simultaneously (e.g. both {status="active"} and {status="idle"} = 1).
-                prev = getattr(self, '_last_farm_status', None)
-                if prev and prev != status:
-                    farm_status.labels(status=prev).set(0)
-                    farm_status_raw.labels(status=prev).set(0)
-                self._last_farm_status = status
-
                 farm_status.labels(status=status).set(is_healthy)
                 farm_status_raw.labels(status=status).set(1)
                 logger.info(f"Farm status: {status} (healthy={bool(is_healthy)})")
             else:
-                prev = getattr(self, '_last_farm_status', None)
-                if prev:
-                    farm_status.labels(status=prev).set(0)
-                    farm_status_raw.labels(status=prev).set(0)
-                self._last_farm_status = 'unknown'
                 farm_status.labels(status='unknown').set(0)
                 farm_status_raw.labels(status='unknown').set(1)
         except Exception as e:
             logger.error(f"Farm status check failed: {e}")
+            farm_status.clear()
+            farm_status_raw.clear()
             farm_status.labels(status='unknown').set(0)
             farm_status_raw.labels(status='unknown').set(1)
     
