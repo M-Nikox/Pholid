@@ -26,9 +26,11 @@
       "title": "Farm Status",
       "targets": [
         {
-          "expr": "flamenco_farm_status_raw",
+          "expr": "flamenco_farm_status_raw == 1",
           "refId": "A",
-          "legendFormat": "{{status}}"
+          "legendFormat": "{{status}}",
+          "instant": true,
+          "range": false
         }
       ],
       "options": {
