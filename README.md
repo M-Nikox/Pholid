@@ -1,5 +1,5 @@
 # pangolin
-## a render manager for people who hate render managers.
+## a render manager for people who hate render managers. (and paying)
 
 i built this because i got tired of waiting for zips and digging through messy (or non existant) logs. pangolin is a ground-up rewrite of everything i learned while building previous tools. it's fast, it's stateless, and it's built for artists who just want their frames.
 
