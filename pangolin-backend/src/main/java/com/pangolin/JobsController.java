@@ -164,9 +164,10 @@ public class JobsController {
                 "jobId", jobId
             ));
 
-        } catch (org.springframework.web.client.HttpClientErrorException.UnprocessableEntity e) {
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            if (e.getStatusCode().value() != 422) throw e;
             log.warn("Cannot cancel job {} in its current state", jobId);
-            return ResponseEntity.status(422)
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
                     .body(Map.of(
                         "error", "Job cannot be cancelled in its current state",
                         "jobId", jobId
