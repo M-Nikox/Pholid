@@ -292,14 +292,14 @@
             </section>
 
             <!-- RIGHT: Sessions Sidebar -->
-            <div class="flex flex-col gap-6 h-full">
+            <div class="flex flex-col gap-6" style="align-self: flex-start; min-width: 0;">
                 <!-- Live Sessions -->
-                <section class="glass-card p-6 flex flex-col max-h-[520px]">
+                <section class="glass-card p-6 flex flex-col">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Live Sessions</h2>
                         <div id="active-count" class="bg-pangolin-orange text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</div>
                     </div>
-                    <div id="active-sessions-list" class="space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-grow">
+                    <div id="active-sessions-list" class="space-y-4 overflow-y-auto custom-scrollbar pr-2" style="max-height: 200px;">
                         <!-- Polled from your JS modules -->
                         <div class="opacity-20 text-center py-20 italic text-sm">Initializing farm...</div>
                     </div>
