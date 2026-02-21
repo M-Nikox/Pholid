@@ -238,7 +238,7 @@
         <div class="main-layout-grid">
             
             <!-- LEFT: Render Submission -->
-            <section class="glass-card p-6 md:p-8">
+            <section class="glass-card p-6 md:p-8 h-full">
                 <div class="flex items-center justify-between mb-8">
                     <h2 class="text-2xl font-bold font-outfit">Submit Render</h2>
                     <span class="text-xs font-bold opacity-40 uppercase tracking-widest">Blender 4.0 Cycles</span>
@@ -291,35 +291,40 @@
                 </form>
             </section>
 
-            <!-- RIGHT: Sessions Sidebar -->
-            <div class="flex flex-col gap-6" style="align-self: flex-start; min-width: 0;">
-                <!-- Live Sessions -->
-                <section class="glass-card p-6 flex flex-col">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Live Sessions</h2>
-                        <div id="active-count" class="bg-pangolin-orange text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</div>
+            <!-- RIGHT: Unified Sessions Sidebar -->
+            <div class="flex flex-col min-w-0">
+                <section class="glass-card flex flex-col h-full overflow-hidden">
+                    <!-- Live Sessions -->
+                    <div class="p-6 flex flex-col flex-shrink-0">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Live Sessions</h2>
+                            <div id="active-count" class="bg-pangolin-orange text-white text-[10px] px-2 py-0.5 rounded-full font-black">0</div>
+                        </div>
+                        <div id="active-sessions-list" class="space-y-4 overflow-y-auto custom-scrollbar pr-2" style="max-height: 200px;">
+                            <!-- Polled from your JS modules -->
+                            <div class="opacity-20 text-center py-10 italic text-sm">Initializing farm...</div>
+                        </div>
                     </div>
-                    <div id="active-sessions-list" class="space-y-4 overflow-y-auto custom-scrollbar pr-2" style="max-height: 200px;">
-                        <!-- Polled from your JS modules -->
-                        <div class="opacity-20 text-center py-20 italic text-sm">Initializing farm...</div>
-                    </div>
-                </section>
 
-                <!-- History Panel -->
-                <section class="glass-card p-6 flex flex-col flex-1 min-h-[280px]">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Previous</h2>
-                        <span class="text-[10px] opacity-30 font-bold uppercase tracking-widest">Archive</span>
+                    <!-- Divider -->
+                    <div style="height: 1px; background: rgba(255,255,255,0.06); flex-shrink: 0;"></div>
+
+                    <!-- Previous -->
+                    <div class="p-6 flex flex-col flex-1 overflow-hidden">
+                        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+                            <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Previous</h2>
+                            <span class="text-[10px] opacity-30 font-bold uppercase tracking-widest">Archive</span>
+                        </div>
+                        <div id="history-sessions-list" class="space-y-2 overflow-y-auto custom-scrollbar pr-2 flex-1">
+                            <!-- History injected here -->
+                        </div>
+                        <button id="load-more-btn"
+                                onclick="activeSessions.loadMorePreviousJobs()"
+                                style="display:none"
+                                class="w-full mt-3 py-2 text-[10px] font-bold uppercase tracking-widest glass-input hover:border-pangolin-orange transition-all rounded-xl flex-shrink-0">
+                            Load more
+                        </button>
                     </div>
-                    <div id="history-sessions-list" class="space-y-2 overflow-y-auto custom-scrollbar pr-2" style="max-height: 220px;">
-                        <!-- History injected here -->
-                    </div>
-                    <button id="load-more-btn"
-                            onclick="activeSessions.loadMorePreviousJobs()"
-                            style="display:none"
-                            class="w-full mt-3 py-2 text-[10px] font-bold uppercase tracking-widest glass-input hover:border-pangolin-orange transition-all rounded-xl">
-                        Load more
-                    </button>
                 </section>
             </div>
         </div>
