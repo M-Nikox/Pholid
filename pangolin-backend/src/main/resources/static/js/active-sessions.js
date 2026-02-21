@@ -6,6 +6,7 @@
 const activeSessions = (() => {
     let pollInterval = null;
     let activeJobs = [];
+    let _lastActiveIds = new Set(); // tracks IDs from previous poll to detect completions
     const POLL_INTERVAL_MS = 3000;
     const PAGE_SIZE = 50;
     let previousJobsOffset = 0;
@@ -64,6 +65,17 @@ const activeSessions = (() => {
             console.log(`📊 Fetched ${activeJobs.length} active job(s)`);
             
             renderActiveJobs(activeJobs);
+
+            // Detect jobs that just left the active list — they completed/failed/canceled
+            // Refresh the Previous panel immediately so new entries appear without page reload
+            const currentIds = new Set(activeJobs.map(j => j.id));
+            const jobsJustFinished = [..._lastActiveIds].some(id => !currentIds.has(id));
+            if (jobsJustFinished) {
+                console.log('✅ Job(s) completed — refreshing Previous panel');
+                previousJobsOffset = 0;
+                fetchAndDisplayPreviousJobs();
+            }
+            _lastActiveIds = currentIds;
 
             // Pause polling when nothing is active — resume on next submission
             if (activeJobs.length === 0 && pollInterval) {
@@ -138,9 +150,9 @@ const activeSessions = (() => {
             const pangolinId = job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id;
             const staggerDelay = (index * 18) + 'ms';
             const downloadBtn = job.status === 'completed'
-                ? '<a href="/download/' + pangolinId + '" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);" onclick="event.stopPropagation()">Download</a>'
+                ? '<a href="/download/' + pangolinId + '" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);">Download</a>'
                 : '';
-            return '<div class="history-item history-item-enter px-4 py-3 glass-input border-none flex items-center justify-between group rounded-xl cursor-pointer" style="animation-delay:' + staggerDelay + '" data-flamenco-id="' + job.id + '" data-job-name="' + displayName + '" onclick="activeSessions.openLogModal(this, event)">'
+            return '<div class="history-item history-item-enter px-4 py-3 glass-input border-none flex items-center justify-between group rounded-xl" style="animation-delay:' + staggerDelay + '" data-flamenco-id="' + job.id + '">'
                 + '<div class="flex items-center gap-3 min-w-0">'
                 +   '<div class="w-2 h-2 rounded-full flex-shrink-0" style="background:' + statusColor + ';"></div>'
                 +   '<div class="min-w-0">'
@@ -151,7 +163,7 @@ const activeSessions = (() => {
                 + '</div>'
                 + '<div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all ml-3">'
                 +   downloadBtn
-                +   '<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="' + job.id + '" data-confirm="false" onclick="event.stopPropagation()">Delete</button>'
+                +   '<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="' + job.id + '" data-confirm="false">Delete</button>'
                 + '</div>'
                 + '</div>';
         }).join('');
@@ -176,8 +188,6 @@ const activeSessions = (() => {
 
         if (countBadge) countBadge.textContent = jobs.length;
         
-        container.innerHTML = '';
-        
         if (jobs.length === 0) {
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
@@ -188,16 +198,87 @@ const activeSessions = (() => {
             `;
             return;
         }
-        
-        jobs.forEach(job => {
-            const card = createJobCard(job);
-            container.appendChild(card);
+
+        // Track which job IDs are in the new list
+        const incomingIds = new Set(jobs.map(j => j.id));
+
+        // Remove cards for jobs no longer in the list
+        container.querySelectorAll('.job-card[data-job-id]').forEach(el => {
+            if (!incomingIds.has(el.dataset.jobId)) el.remove();
         });
+
+        // Update existing cards in-place or insert new ones (new ones get the enter animation)
+        jobs.forEach((job, index) => {
+            const existing = container.querySelector('.job-card[data-job-id="' + job.id + '"]');
+            if (existing) {
+                // In-place update — patch only the parts that change to avoid jitter
+                updateJobCard(existing, job);
+            } else {
+                // New card — insert at correct position with enter animation
+                const card = createJobCard(job);
+                const allCards = container.querySelectorAll('.job-card[data-job-id]');
+                if (index < allCards.length) {
+                    container.insertBefore(card, allCards[index]);
+                } else {
+                    container.appendChild(card);
+                }
+            }
+        });
+    }
+
+    function updateJobCard(card, job) {
+        const progress = job.steps_total > 0
+            ? Math.round((job.steps_completed / job.steps_total) * 100)
+            : 0;
+        const statusInfo = getStatusInfo(job.status);
+        const eta = calculateETA(job);
+
+        // Update status class
+        card.className = card.className.replace(/status-\S+/, 'status-' + job.status);
+
+        // Patch activity text
+        const activityEl = card.querySelector('.job-activity-text');
+        if (activityEl) activityEl.textContent = job.activity || statusInfo.text;
+
+        // Patch progress bar width
+        const bar = card.querySelector('.job-progress-bar');
+        if (bar) bar.style.width = progress + '%';
+
+        // Patch frames text
+        const framesEl = card.querySelector('.job-frames-text');
+        if (framesEl) framesEl.textContent = job.steps_completed + ' / ' + job.steps_total + ' frames';
+
+        // Patch percent text
+        const pctEl = card.querySelector('.job-percent-text');
+        if (pctEl) pctEl.textContent = progress + '%';
+
+        // Patch ETA
+        const etaEl = card.querySelector('.job-eta-text');
+        if (etaEl) {
+            if (eta) {
+                etaEl.textContent = '⏱️ ' + eta;
+                etaEl.style.display = '';
+            } else {
+                etaEl.style.display = 'none';
+            }
+        }
+
+        // Patch action buttons if status changed
+        const actionsEl = card.querySelector('.job-actions');
+        if (actionsEl) {
+            actionsEl.innerHTML = createActionButtons(job);
+            actionsEl.querySelectorAll('.cancel-job-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleCancelClick(btn);
+                });
+            });
+        }
     }
 
     function createJobCard(job) {
         const card = document.createElement('div');
-        card.className = `glass-card job-card job-card-enter status-${job.status} rounded-2xl p-5 mb-3`;
+        card.className = `glass-card job-card job-card-enter status-${job.status} rounded-2xl p-5 mb-3 overflow-hidden`;
         card.dataset.jobId = job.id;
 
         const progress = job.steps_total > 0 
@@ -216,7 +297,7 @@ const activeSessions = (() => {
                     <h3 class="font-bold text-base truncate" style="color: var(--text-primary);" title="${displayName}">
                         ${displayName}
                     </h3>
-                    <p class="text-xs italic" style="color: var(--text-secondary);">
+                    <p class="job-activity-text text-xs italic" style="color: var(--text-secondary);">
                         ${job.activity || statusInfo.text}
                     </p>
                 </div>
@@ -225,30 +306,28 @@ const activeSessions = (() => {
             <!-- Progress Bar -->
             <div class="mb-3">
                 <div class="h-2 rounded-full overflow-hidden" style="background: var(--bg-secondary);">
-                    <div class="h-full bg-gradient-to-r from-pangolin-orange to-orange-400 transition-all duration-500 relative"
+                    <div class="job-progress-bar h-full bg-gradient-to-r from-pangolin-orange to-orange-400 transition-all duration-500 relative"
                         style="width: ${progress}%">
                         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
                     </div>
                 </div>
                 <div class="flex justify-between items-center mt-1">
-                    <span class="text-xs" style="color: var(--text-secondary);">
+                    <span class="job-frames-text text-xs" style="color: var(--text-secondary);">
                         ${job.steps_completed} / ${job.steps_total} frames
                     </span>
-                    <span class="text-xs font-semibold text-pangolin-orange">
+                    <span class="job-percent-text text-xs font-semibold text-pangolin-orange">
                         ${progress}%
                     </span>
                 </div>
             </div>
 
             <!-- ETA -->
-            ${eta ? `
-                <div class="text-sm mb-3 text-pangolin-orange font-medium">
-                    ⏱️ ${eta}
-                </div>
-            ` : ''}
+            <div class="job-eta-text text-sm mb-3 text-pangolin-orange font-medium" ${eta ? '' : 'style="display:none"'}>
+                ⏱️ ${eta || ''}
+            </div>
 
             <!-- Actions -->
-            <div class="flex gap-2">
+            <div class="job-actions flex gap-2">
                 ${createActionButtons(job)}
             </div>
         `;
@@ -543,12 +622,10 @@ You may need to remove these files manually.`);
             const pangolinId = job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id;
             const staggerDelay = (index * 18) + 'ms';
             const downloadBtn = job.status === 'completed'
-                ? '<a href="/download/' + pangolinId + '" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);" onclick="event.stopPropagation()">Download</a>'
+                ? '<a href="/download/' + pangolinId + '" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);">Download</a>'
                 : '';
             const div = document.createElement('div');
-            div.className = 'history-item history-item-enter px-4 py-3 glass-input border-none flex items-center justify-between group rounded-xl cursor-pointer';
-            div.dataset.jobName = displayName;
-            div.setAttribute('onclick', 'activeSessions.openLogModal(this, event)');
+            div.className = 'history-item history-item-enter px-4 py-3 glass-input border-none flex items-center justify-between group rounded-xl';
             div.style.animationDelay = staggerDelay;
             div.dataset.flamencoId = job.id;
             div.innerHTML = '<div class="flex items-center gap-3 min-w-0">'
@@ -561,7 +638,7 @@ You may need to remove these files manually.`);
                 + '</div>'
                 + '<div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all ml-3">'
                 +   downloadBtn
-                +   '<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="' + job.id + '" data-confirm="false" onclick="event.stopPropagation()">Delete</button>'
+                +   '<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="' + job.id + '" data-confirm="false">Delete</button>'
                 + '</div>';
             div.querySelectorAll('.delete-job-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -582,107 +659,8 @@ You may need to remove these files manually.`);
     }
 
     // Public API
-    // ── Log Modal ─────────────────────────────────────────────────────────────
-
-    async function openLogModal(row, event) {
-        // Don't open if clicking a button or link
-        if (event && (event.target.tagName === 'BUTTON' || event.target.tagName === 'A')) return;
-
-        const jobId = row.dataset.flamencoId;
-        const jobName = row.dataset.jobName || 'Job';
-
-        const modal = document.getElementById('logModal');
-        const jobNameEl = document.getElementById('logModalJobName');
-        const taskList = document.getElementById('logModalTaskList');
-        const logContent = document.getElementById('logModalContent');
-
-        if (!modal) return;
-
-        // Reset and open
-        jobNameEl.textContent = jobName;
-        taskList.innerHTML = '<p class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-1">Tasks</p><p class="text-xs opacity-40 italic">Loading...</p>';
-        logContent.innerHTML = '<p class="text-xs opacity-30 italic">Select a task to view its log.</p>';
-        modal.style.display = 'flex';
-
-        // Fetch task list
-        try {
-            const res = await fetch('/api/jobs/' + jobId + '/tasks');
-            const data = await res.json();
-            const tasks = data.tasks || [];
-
-            if (tasks.length === 0) {
-                taskList.innerHTML = '<p class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-1">Tasks</p><p class="text-xs opacity-40 italic">No tasks found.</p>';
-                return;
-            }
-
-            const statusColor = (s) => s === 'completed' ? '#22c55e' : s === 'failed' ? '#ef4444' : s === 'active' ? '#f97316' : '#6b7280';
-
-            taskList.innerHTML = '<p class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-1">Tasks</p>'
-                + tasks.map(t =>
-                    '<button class="log-task-btn w-full text-left px-3 py-2 rounded-lg text-xs transition-all hover:bg-white/5 flex items-center gap-2"'
-                    + ' data-task-id="' + t.id + '" data-job-id="' + jobId + '">'
-                    + '<div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:' + statusColor(t.status) + '"></div>'
-                    + '<span class="truncate">' + (t.name || t.id) + '</span>'
-                    + '</button>'
-                ).join('');
-
-            // Wire task buttons
-            taskList.querySelectorAll('.log-task-btn').forEach(btn => {
-                btn.addEventListener('click', () => loadTaskLog(btn, jobId, btn.dataset.taskId));
-            });
-
-            // Auto-load first task
-            const firstBtn = taskList.querySelector('.log-task-btn');
-            if (firstBtn) loadTaskLog(firstBtn, jobId, firstBtn.dataset.taskId);
-
-        } catch (e) {
-            taskList.innerHTML = '<p class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-1">Tasks</p><p class="text-xs" style="color:#ef4444">Failed to load tasks.</p>';
-            console.error('Error fetching tasks:', e);
-        }
-    }
-
-    async function loadTaskLog(btn, jobId, taskId) {
-        const logContent = document.getElementById('logModalContent');
-        const taskList = document.getElementById('logModalTaskList');
-
-        // Highlight active task button
-        taskList.querySelectorAll('.log-task-btn').forEach(b => b.style.background = '');
-        btn.style.background = 'rgba(250,129,18,0.12)';
-
-        logContent.innerHTML = '<p class="text-xs opacity-40 italic">Loading log...</p>';
-
-        try {
-            const res = await fetch('/api/jobs/' + jobId + '/tasks/' + taskId + '/log');
-            const text = await res.text();
-
-            if (!res.ok) {
-                logContent.innerHTML = '<p class="text-xs" style="color:#ef4444">' + text + '</p>';
-                return;
-            }
-
-            // Render log as monospace with line coloring
-            const lines = text.split('\n').map(line => {
-                let color = '';
-                if (line.includes('ERROR') || line.includes('error') || line.includes('EGL Error')) color = 'color:#ef4444';
-                else if (line.includes('WARNING') || line.includes('warning')) color = 'color:#f97316';
-                else if (line.includes('completed') || line.includes('Saved:')) color = 'color:#22c55e';
-                const escaped = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                return '<div style="' + color + '">' + escaped + '</div>';
-            }).join('');
-
-            logContent.innerHTML = '<pre class="text-xs font-mono leading-relaxed whitespace-pre-wrap" style="opacity:0.8">' + lines + '</pre>';
-            // Scroll to bottom
-            logContent.scrollTop = logContent.scrollHeight;
-
-        } catch (e) {
-            logContent.innerHTML = '<p class="text-xs" style="color:#ef4444">Failed to fetch log.</p>';
-            console.error('Error fetching task log:', e);
-        }
-    }
-
     return {
         init,
-        openLogModal,
         fetchAndDisplayActiveJobs,
         fetchAndDisplayPreviousJobs,
         loadMorePreviousJobs,
