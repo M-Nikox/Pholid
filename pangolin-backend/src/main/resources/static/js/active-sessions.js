@@ -190,10 +190,10 @@ const activeSessions = (() => {
         
         if (jobs.length === 0) {
             container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
-                    <div class="text-6xl mb-4 opacity-50">💤</div>
-                    <p class="text-lg font-semibold mb-2" style="color: var(--text-primary);">No active renders</p>
-                    <p class="text-sm" style="color: var(--text-secondary);">Submit a job to get started!</p>
+                <div class="flex flex-col items-center justify-center py-4 px-4 text-center empty-state">
+                    <div class="text-4xl mb-2 opacity-50">💤</div>
+                    <p class="text-sm font-semibold mb-1" style="color: var(--text-primary);">No active renders</p>
+                    <p class="text-xs" style="color: var(--text-secondary);">Submit a job to get started!</p>
                 </div>
             `;
             return;
@@ -201,6 +201,10 @@ const activeSessions = (() => {
 
         // Track which job IDs are in the new list
         const incomingIds = new Set(jobs.map(j => j.id));
+
+        // Clear empty state if present
+        const emptyState = container.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
 
         // Remove cards for jobs no longer in the list
         container.querySelectorAll('.job-card[data-job-id]').forEach(el => {
