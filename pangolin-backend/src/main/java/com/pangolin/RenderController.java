@@ -222,7 +222,7 @@ public class RenderController {
 
         if (pangolinJobId == null || !pangolinJobId.matches("[a-f0-9]{16}")) {
             log.warn("Job {} has missing or invalid pangolin.job_id in metadata", flamencoJobId);
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
                     .body(Map.of("error", "Job is missing a valid pangolin.job_id in metadata. "
                             + "Cannot safely locate output files for deletion."));
         }
