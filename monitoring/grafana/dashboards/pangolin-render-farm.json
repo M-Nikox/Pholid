@@ -289,7 +289,9 @@
         {
           "expr": "flamenco_worker_status",
           "refId": "A",
-          "legendFormat": "{{status}}"
+          "legendFormat": "{{status}}",
+          "instant": true,
+          "range": false
         }
       ],
       "options": {
