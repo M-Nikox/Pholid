@@ -5,12 +5,11 @@
  */
 
 const grafanaPanels = (() => {
-    // Set this to your Grafana URL to enable live panels
-    // e.g. 'http://your-grafana:3000'
-    const GRAFANA_BASE_URL = '';
+    // Grafana is on the same host, port from docker-compose
+    const GRAFANA_BASE_URL = 'http://localhost:3000';
 
-    const PANEL_IDS = { cpu: 1, memory: 2, queue: 3, network: 4 };
-    const DASHBOARD_ID = 'YOUR_DASHBOARD_ID'; // Replace with your actual dashboard ID
+    const PANEL_IDS = { cpu: 13, memory: 12, queue: 3, network: 14 };
+    const DASHBOARD_ID = 'pangolin-render-farm';
 
     const tabs = ['cpu', 'memory', 'queue', 'network'];
     let activeTab = 'cpu';
