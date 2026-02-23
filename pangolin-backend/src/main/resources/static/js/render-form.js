@@ -38,6 +38,34 @@ const renderForm = (() => {
 
         // Form submission
         form.addEventListener('submit', handleSubmit);
+
+        // Compute mode — warn if OptiX selected on Windows/WSL2
+        setupComputeModeWarning();
+    }
+
+    let checkComputeWarning = () => {}; // updated once setupComputeModeWarning runs
+
+    function setupComputeModeWarning() {
+        const select = document.getElementById('computeMode');
+        const warning = document.getElementById('optixWarning');
+        if (!select || !warning) return;
+
+        const isWindows = /windows/i.test(navigator.userAgent);
+
+        function checkWarning() {
+            const isOptix = select.value === 'gpu-optix';
+            warning.style.display = (isWindows && isOptix) ? 'block' : 'none';
+            submitBtn.disabled = (isWindows && isOptix);
+            if (isWindows && isOptix) {
+                submitBtn.title = 'OptiX is not supported on Windows/WSL2. Select CUDA or CPU.';
+            } else {
+                submitBtn.title = '';
+            }
+        }
+
+        select.addEventListener('change', checkWarning);
+        checkWarning(); // run on load in case OptiX is somehow pre-selected on Windows
+        checkComputeWarning = checkWarning; // expose to other functions
     }
 
     /**
@@ -216,6 +244,7 @@ const renderForm = (() => {
         // If we get here, the file is valid
         fileInput.setCustomValidity('');
         submitBtn.disabled = false;
+        checkComputeWarning(); // re-apply compute mode block if active
         return true;
     }
 
@@ -237,6 +266,13 @@ const renderForm = (() => {
      */
     async function handleSubmit(e) {
         e.preventDefault();
+
+        // Hard guard — never allow OptiX submission on Windows regardless of button state
+        const computeSelect = document.getElementById('computeMode');
+        if (computeSelect && computeSelect.value === 'gpu-optix' && /windows/i.test(navigator.userAgent)) {
+            checkComputeWarning();
+            return;
+        }
 
         // Show loading state immediately
         const originalButtonText = submitBtn.textContent;
