@@ -67,7 +67,8 @@ public class RenderController {
     public ResponseEntity<Map<String, String>> submit(@RequestParam("blendFile") MultipartFile file,
                                                       @RequestParam("projectName") String projectName,
                                                       @RequestParam("frames") String frames,
-                                                      @RequestParam(value = "priority", defaultValue = "1") String priority) {
+                                                      @RequestParam(value = "priority", defaultValue = "1") String priority,
+                                                      @RequestParam(value = "computeMode", defaultValue = "gpu-cuda") String computeMode) {
 
         String safeName = HtmlUtils.htmlEscape(projectName);
         if (safeName.length() > MAX_PROJECT_NAME_LENGTH) {
@@ -88,7 +89,7 @@ public class RenderController {
 
         try {
             String jobId = createJobDirectory(file);
-            sendToManager(jobId, safeName, frames, range.totalFrames(), flamencoPriority);
+            sendToManager(jobId, safeName, frames, range.totalFrames(), flamencoPriority, computeMode);
             return ResponseEntity.ok(Map.of(
                     "message", "Job submitted successfully!",
                     "jobId", jobId
@@ -442,40 +443,88 @@ public class RenderController {
                                String projectName,
                                String frames,
                                int totalFrames,
-                               int priority) {
+                               int priority,
+                               String computeMode) {
 
         Path jobDir = Path.of(getJobRoot(), jobId);
         Path blendFile = jobDir.resolve("input.blend");
 
+        String jobType;
+        switch (computeMode.toLowerCase()) {
+            case "gpu-optix" -> jobType = "cycles-optix-gpu";
+            case "gpu-cuda"  -> jobType = "cycles-cuda-gpu";
+            default          -> jobType = "simple-blender-render";
+        }
+        boolean useGpu = jobType.startsWith("cycles-");
+
+        // Fetch job types from manager to get the type_etag — this is what
+        // the Blender add-on does and Flamenco expects it on submission.
+        String typeEtag = fetchJobTypeEtag(jobType);
+
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("name", "Pangolin_" + projectName);
-        payload.put("type", "simple-blender-render");
+        payload.put("type", jobType);
         payload.put("priority", priority);
         payload.put("submitter_platform", "web-client");
+        if (typeEtag != null) {
+            payload.put("type_etag", typeEtag);
+        }
 
         payload.put("metadata", Map.of(
                 "project", projectName,
                 "submitter", "Pangolin-Web",
                 "total_frames", String.valueOf(totalFrames),
                 "frame_range", frames,
+                "compute_mode", computeMode,
                 "pangolin.job_id", jobId
         ));
 
-        payload.put("settings", buildSettings(frames, blendFile, jobDir));
+        payload.put("settings", buildSettings(frames, blendFile, jobDir, useGpu));
 
         String url = managerUrl + "/api/v3/jobs";
         try {
             restTemplate.postForObject(url, payload, String.class);
-            log.info("Job {} submitted to manager at {} with priority {}", jobId, url, priority);
+            log.info("Job {} submitted to manager at {} with priority {} type={}", jobId, url, priority, jobType);
         } catch (Exception e) {
             log.error("Failed to send job {} to manager", jobId, e);
             throw e;
         }
     }
 
+    /**
+     * Calls GET /api/v3/jobs/types to load all job types (including custom scripts)
+     * and returns the etag for the requested type. Flamenco only loads custom JS
+     * job types when this endpoint is called, so we must call it before submitting.
+     */
+    @SuppressWarnings("unchecked")
+    private String fetchJobTypeEtag(String jobType) {
+        try {
+            Map<String, Object> response = restTemplate.getForObject(
+                    managerUrl + "/api/v3/jobs/types", Map.class);
+            if (response == null) return null;
+
+            List<Map<String, Object>> jobTypes = (List<Map<String, Object>>) response.get("job_types");
+            if (jobTypes == null) return null;
+
+            for (Map<String, Object> jt : jobTypes) {
+                if (jobType.equals(jt.get("name"))) {
+                    String etag = (String) jt.get("etag");
+                    log.info("Found job type '{}' with etag={}", jobType, etag);
+                    return etag;
+                }
+            }
+            log.warn("Job type '{}' not found in manager job types. Available: {}",
+                    jobType, jobTypes.stream().map(jt -> jt.get("name")).toList());
+        } catch (Exception e) {
+            log.warn("Could not fetch job types from manager: {}", e.getMessage());
+        }
+        return null;
+    }
+
     private @NonNull Map<String, Object> buildSettings(String frames,
                                                        Path blendFile,
-                                                       Path jobDir) {
+                                                       Path jobDir,
+                                                       boolean useGpu) {
 
         Path outputDir = jobDir.resolve("output");
         String outputPattern = outputDir.toString() + "/######";
@@ -491,6 +540,9 @@ public class RenderController {
         settings.put("has_previews", false);
         settings.put("generate_preview_video", false);
         settings.put("image_file_extension", ".png");
+
+        // Both job types declare add_path_components as required
+        settings.put("add_path_components", 0);
 
         return settings;
     }
