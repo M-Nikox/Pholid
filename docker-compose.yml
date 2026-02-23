@@ -38,12 +38,20 @@ services:
     depends_on:
       flamenco-manager:
         condition: service_healthy
-    volumes:
-      - flamenco-shared:/shared
     networks:
       - pangolin-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
+      # NVIDIA runtime — exposes GPUs to the container
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      # WSL2: /usr/lib/wsl is mounted read-only so the entrypoint can detect
+      # the environment and configure OptiX library paths automatically.
+      # On native Linux this mount is an empty directory and has no effect.
+    runtime: nvidia
+    volumes:
+      - flamenco-shared:/shared
+      - /usr/lib/wsl:/usr/lib/wsl:ro
     deploy:
       replicas: 2  # Scale workers as needed
       resources:
@@ -53,6 +61,10 @@ services:
         reservations:
           cpus: '2.0'
           memory: 4G
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
     labels:
       - "com.pangolin.service=flamenco-worker"
 
