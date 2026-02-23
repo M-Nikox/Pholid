@@ -1,9 +1,15 @@
 # Copyright © 2026 Pangolin
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu:26.04
+# CUDA 13.1.1 runtime on Ubuntu 24.04 — exposes GPU to Blender (Cycles CUDA/OptiX)
+# Requires nvidia-container-toolkit on the host. See README for host setup.
+FROM nvidia/cuda:13.1.1-runtime-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Tell the NVIDIA runtime to expose all GPUs with full capabilities
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
 
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates
 
@@ -14,16 +20,17 @@ RUN apt-get update && \
       ca-certificates \
       # Do not remove this
       ffmpeg \
-      # Eevee
+      # Eevee / OptiX
       libegl1 \
       libgles2 \
       libglvnd0 \
       libopengl0 \
-      # OpenGL
+      libglvnd-dev \
+      # OpenGL / OpenCL
       ocl-icd-libopencl1 \
       libgl1 \
       libegl-mesa0 \
-      # Do not remove this
+      # X11 stubs (headless rendering)
       libx11-6 \
       libxi6 \
       libxext6 \
@@ -58,5 +65,8 @@ ENV PATH="/blender:/flamenco:${PATH}"
 WORKDIR /flamenco
 
 COPY flamenco-worker.yaml .
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["./flamenco-worker"]
