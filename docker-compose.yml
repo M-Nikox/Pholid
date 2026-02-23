@@ -216,6 +216,38 @@ services:
 
 
 
+  # ============================================
+  # GPU EXPORTER - NVIDIA GPU Metrics
+  # ============================================
+  gpu-exporter:
+    build:
+      context: ./monitoring/gpu-exporter
+      dockerfile: Dockerfile
+    container_name: pangolin-gpu-exporter
+    restart: unless-stopped
+    runtime: nvidia
+    expose:
+      - "9091"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - EXPORTER_PORT=9091
+      - SCRAPE_INTERVAL=5
+      - LOG_LEVEL=INFO
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+    networks:
+      - pangolin-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9091').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "com.pangolin.service=monitoring"
+
 # ============================================
 # NETWORKS
 # ============================================

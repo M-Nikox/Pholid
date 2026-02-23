@@ -8,10 +8,10 @@ const grafanaPanels = (() => {
     // Grafana is on the same host, port from docker-compose
     const GRAFANA_BASE_URL = 'http://localhost:3000';
 
-    const PANEL_IDS = { cpu: 13, memory: 12, queue: 3, network: 14, workers: 5 };
+    const PANEL_IDS = { cpu: 13, memory: 12, queue: 3, network: 14, workers: 5, gpu: 19 };
     const DASHBOARD_ID = 'pangolin-render-farm';
 
-    const tabs = ['cpu', 'memory', 'workers', 'queue', 'network'];
+    const tabs = ['cpu', 'memory', 'workers', 'queue', 'network', 'gpu'];
     let activeTab = 'cpu';
 
     function switchPanel(panelName) {
