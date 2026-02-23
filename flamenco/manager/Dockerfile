@@ -11,6 +11,12 @@ WORKDIR /flamenco-3.8.2-linux-amd64
 
 COPY flamenco-manager.yaml .
 
+# Custom job types: GPU rendering via OptiX and CUDA
+# Place any additional .js job types here and add a COPY line for each
+RUN mkdir -p scripts
+COPY cycles_optix_gpu.js scripts/
+COPY cycles_cuda_gpu.js scripts/
+
 EXPOSE 8080
 
 CMD ["./flamenco-manager"]
