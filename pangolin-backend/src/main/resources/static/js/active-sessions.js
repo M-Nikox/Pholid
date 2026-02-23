@@ -167,12 +167,26 @@ const activeSessions = (() => {
                 + '</div>'
                 + '</div>';
         }).join('');
-        // Wire up delete buttons via event delegation
+        // Wire up delete buttons — stop propagation so the row click (log modal) doesn't also fire
         container.querySelectorAll('.delete-job-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleDeleteClick(btn);
+            });
+        });
+
+        // Wire up row click → open log modal
+        container.querySelectorAll('.history-item[data-flamenco-id]').forEach(row => {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', (e) => {
+                // Don't open modal if clicking a button/link inside the row
+                if (e.target.closest('button, a')) return;
+                const flamencoId = row.dataset.flamencoId;
+                const displayName = row.querySelector('p.font-semibold')?.textContent?.trim() || flamencoId;
+                document.dispatchEvent(new CustomEvent('pangolin:openLogModal', {
+                    detail: { flamencoId, displayName }
+                }));
             });
         });
     }
@@ -354,7 +368,8 @@ const activeSessions = (() => {
             'paused': { icon: '⏸️', text: 'Paused' },
             'pause-requested': { icon: '⏸️', text: 'Pausing...' },
             'cancel-requested': { icon: '⏹️', text: 'Cancelling...' },
-            'under-construction': { icon: '🔨', text: 'Setting up...' }
+            'under-construction': { icon: '🔨', text: 'Setting up...' },
+            'requeueing': { icon: '🔄', text: 'Requeueing...' },
         };
         return statusMap[status] || { icon: '❓', text: status };
     }
@@ -650,6 +665,16 @@ You may need to remove these files manually.`);
                     e.stopPropagation();
                     handleDeleteClick(btn);
                 });
+            });
+            // Row click → log modal
+            div.style.cursor = 'pointer';
+            div.addEventListener('click', (e) => {
+                if (e.target.closest('button, a')) return;
+                const flamencoId = div.dataset.flamencoId;
+                const displayName = div.querySelector('p.font-semibold')?.textContent?.trim() || flamencoId;
+                document.dispatchEvent(new CustomEvent('pangolin:openLogModal', {
+                    detail: { flamencoId, displayName }
+                }));
             });
             container.appendChild(div);
         });
