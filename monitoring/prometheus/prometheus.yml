@@ -29,9 +29,9 @@ scrape_configs:
     static_configs:
       - targets: ['cadvisor:8080']
     scrape_interval: 10s
-    
-  # Redis Metrics (if redis-exporter is added)
-  - job_name: 'redis'
+
+  # GPU Exporter - NVIDIA GPU metrics via nvidia-smi
+  - job_name: 'gpu-exporter'
     static_configs:
-      - targets: ['redis:6379']
-    scrape_interval: 15s
+      - targets: ['gpu-exporter:9091']
+    scrape_interval: 5s
