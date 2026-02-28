@@ -42,13 +42,12 @@ services:
       - pangolin-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
-      # NVIDIA runtime — exposes GPUs to the container
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
       # WSL2: /usr/lib/wsl is mounted read-only so the entrypoint can detect
       # the environment and configure OptiX library paths automatically.
       # On native Linux this mount is an empty directory and has no effect.
-    runtime: nvidia
+    runtime: nvidia # NVIDIA runtime exposes GPUs to the container
     volumes:
       - flamenco-shared:/shared
       - /usr/lib/wsl:/usr/lib/wsl:ro
