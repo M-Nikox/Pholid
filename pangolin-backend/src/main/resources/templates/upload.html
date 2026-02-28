@@ -12,7 +12,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <!-- Pangolin Styles -->
+    <link rel="stylesheet" href="/css/pangolin.css">
     <script>
         tailwind.config = {
             theme: {
@@ -32,178 +33,6 @@
             }
         }
     </script>
-
-    <style>
-        :root {
-            --pangolin-orange: #FA8112;
-            --accent-primary: #FA8112;
-            --glass-bg: rgba(255, 255, 255, 0.7);
-            --glass-border: rgba(250, 129, 18, 0.2);
-            --text-primary: #222222;
-            --text-secondary: rgba(34, 34, 34, 0.55);
-            --bg-secondary: rgba(0, 0, 0, 0.08);
-            --bg-gradient: linear-gradient(135deg, #FAF3E1 0%, #F5E7C6 100%);
-        }
-
-        [data-theme="dark"] {
-            --glass-bg: rgba(28, 19, 40, 0.8);
-            --glass-border: rgba(250, 129, 18, 0.3);
-            --text-primary: #FAF3E1;
-            --text-secondary: rgba(250, 243, 225, 0.5);
-            --bg-secondary: rgba(255, 255, 255, 0.07);
-            --bg-gradient: linear-gradient(135deg, #0F0916 0%, #1C1328 100%);
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
-            color: var(--text-primary);
-            min-height: 100vh;
-            transition: background 0.5s ease, color 0.5s ease;
-        }
-
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-        }
-
-        .glass-input {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-        }
-
-        .orange-glow { box-shadow: 0 0 20px rgba(250, 129, 18, 0.3); }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: var(--glass-border);
-            border-radius: 10px;
-        }
-
-        @keyframes pulse-orange {
-            0% { box-shadow: 0 0 0 0 rgba(250, 129, 18, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(250, 129, 18, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(250, 129, 18, 0); }
-        }
-        .status-active { animation: pulse-orange 2s infinite; border-color: var(--pangolin-orange) !important; }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(200%); }
-        }
-        .animate-shimmer { animation: shimmer 2s infinite; }
-        
-        .main-layout-grid {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 1.5rem;
-        }
-        
-        @media (max-width: 1024px) {
-            .main-layout-grid { grid-template-columns: 1fr; }
-        }
-
-        /* ===== TACTILE INTERACTIONS ===== */
-
-        /* Inputs — hover invite + focus glow */
-        .glass-input {
-            transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
-        }
-        .glass-input:hover {
-            border-color: rgba(250, 129, 18, 0.45);
-        }
-        input.glass-input:focus {
-            border-color: var(--pangolin-orange);
-            box-shadow: 0 0 0 3px rgba(250, 129, 18, 0.15);
-        }
-
-        /* Drop zone — hover + drag-over state */
-        #dropZone {
-            transition: border-color 200ms ease-out, background 200ms ease-out,
-                        transform 150ms ease-out, box-shadow 200ms ease-out;
-        }
-        #dropZone:hover {
-            border-color: rgba(250, 129, 18, 0.55);
-            background: rgba(250, 129, 18, 0.03);
-        }
-        #dropZone.drag-over {
-            border-color: var(--pangolin-orange) !important;
-            background: rgba(250, 129, 18, 0.07);
-            transform: scale(1.01);
-            box-shadow: 0 0 0 3px rgba(250, 129, 18, 0.2),
-                        inset 0 0 24px rgba(250, 129, 18, 0.05);
-        }
-        #dropZone.drag-over span:first-of-type {
-            transform: scale(1.15);
-        }
-
-        /* Header icon buttons */
-        header button.glass-card {
-            transition: transform 150ms ease-out, box-shadow 150ms ease-out;
-        }
-        header button.glass-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(250, 129, 18, 0.15);
-        }
-        header button.glass-card:active {
-            transform: scale(0.94);
-            transition-duration: 60ms;
-        }
-
-        /* Job cards — lift + left border accent */
-        .job-card {
-            transition: transform 150ms ease-out, box-shadow 150ms ease-out,
-                        border-left-color 150ms ease-out;
-            border-left: 3px solid transparent !important;
-        }
-        .job-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(250, 129, 18, 0.13);
-            border-left-color: rgba(250, 129, 18, 0.65) !important;
-        }
-
-        /* History items — subtle horizontal nudge + background highlight */
-        .history-item {
-            transition: transform 150ms ease-out, background 150ms ease-out;
-        }
-        .history-item:hover {
-            transform: translateX(3px);
-            background: rgba(250, 129, 18, 0.08);
-        }
-
-        /* Submit button */
-        #submitBtn {
-            transition: filter 150ms ease-out, transform 150ms ease-out,
-                        background-color 300ms ease !important;
-        }
-        #submitBtn:active {
-            transform: scale(0.984);
-            transition-duration: 60ms;
-        }
-
-        /* ===== ENTRANCE ANIMATIONS ===== */
-
-        @keyframes slideInDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .job-card-enter {
-            animation: slideInDown 300ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(5px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .history-item-enter {
-            animation: fadeInUp 200ms ease-out both;
-        }
-    </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto space-y-6">
@@ -212,7 +41,7 @@
         <header class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-pangolin-orange rounded-2xl flex items-center justify-center orange-glow">
-                    <span class="text-2xl">🦎</span>
+                    <div class="pangolin-logo-header w-8 h-8"></div>
                 </div>
                 <div>
                     <h1 class="text-3xl font-black tracking-tight font-outfit uppercase">Pangolin <span class="font-light opacity-70 text-2xl">Manager</span></h1>
@@ -392,7 +221,7 @@
         <div class="glass-card p-8 max-w-md w-full space-y-5 relative">
             <button id="closeModal" class="absolute top-4 right-4 opacity-40 hover:opacity-100 transition-all text-xl font-black">✕</button>
             <div class="flex items-center gap-3">
-                <span class="text-3xl">🦎</span>
+                <div class="pangolin-logo-guide w-8 h-8 inline-block"></div>
                 <h2 class="text-xl font-black font-outfit uppercase">How to Submit</h2>
             </div>
             <ol class="space-y-3 text-sm opacity-80">
