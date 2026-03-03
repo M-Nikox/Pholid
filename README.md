@@ -35,13 +35,13 @@ Workers are disposable by design. As long as the manager and backend remain oper
 
 ## Technology Stack
 
-- **Docker** / **Docker Compose** — Containerization & orchestration  
-- **Spring Boot** — Backend job control  
-- **Python** — Custom Prometheus exporters for metrics  
-- **Flamenco** — Distributed render job distribution  
-- **Blender** — Rendering engine  
-- **Prometheus** — Metrics collection & monitoring  
-- **Grafana** — Real-time dashboards & observability
+- **Docker** / **Docker Compose** - Containerization & orchestration  
+- **Spring Boot** - Backend job control  
+- **Python** - Custom Prometheus exporters for metrics  
+- **Flamenco** - Distributed render job distribution  
+- **Blender** - Rendering engine  
+- **Prometheus** - Metrics collection & monitoring  
+- **Grafana** - Real-time dashboards & observability
 
 ---
 

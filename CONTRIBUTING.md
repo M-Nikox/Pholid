@@ -34,7 +34,7 @@ This document outlines the guidelines for contributing, reporting issues, and su
 - Use consistent formatting for Python, Java (Spring Boot), and Docker files
 - Include comments where necessary, especially for architecture or GPU-specific logic
 - Keep commits small and focused; one logical change per commit
-- Avoid committing sensitive credentials — use .env files and .env.example
+- Avoid committing sensitive credentials, use .env files and .env.example
 
 ## License
 

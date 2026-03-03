@@ -44,8 +44,8 @@ All respective licenses remain the property of their original authors.
   https://flamenco.blender.org/  
   Licensed under the GNU General Public License (GPL)
 
-- **CUDA Job Type** — Derived from Flamenco community OptiX job type by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3). Maintained and extended by me.  
-- **OptiX Job Type** — Original Flamenco community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3).  
+- **CUDA Job Type** - Derived from Flamenco community OptiX job type by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3). Maintained and extended by me.  
+- **OptiX Job Type** - Original Flamenco community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3).  
 
 ---
 
