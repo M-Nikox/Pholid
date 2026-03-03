@@ -69,4 +69,4 @@ Note: Initial Grafana database creation may take a short moment.
 
 ## Acknowledgments
 
-Thanks to @yeezygambino for consistently testing releases and providing valuable feedback.
+Thanks to [yeezygambino](https://github.com/yeezygambino) for consistently testing releases and providing valuable feedback.
