@@ -171,19 +171,19 @@ public class RenderController {
     @DeleteMapping("api/render/job/{flamencoJobId}")
     public ResponseEntity<Map<String, Object>> deleteJob(@PathVariable String flamencoJobId) {
 
-        // Change 3: Gate on ENABLE_DELETE flag
+        // Check ENABLE_DELETE flag
         if (!deleteEnabled) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Delete feature is not enabled on this instance."));
         }
 
-        // Change 5: Validate Flamenco UUID format
+        // Validate Flamenco UUID format
         if (!isValidFlamencoJobId(flamencoJobId)) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Invalid Flamenco job ID format."));
         }
 
-        // Change 6: Fetch job from Flamenco and verify status is terminal
+        // Fetch job from Flamenco and verify status is terminal
         Map<String, Object> job;
         try {
             @SuppressWarnings("unchecked")
@@ -209,7 +209,7 @@ public class RenderController {
                             + ". Only completed, failed, or canceled jobs may be deleted."));
         }
 
-        // Change 7: Extract and validate pangolin.job_id from metadata
+        // Extract and validate pangolin.job_id from metadata
         String pangolinJobId = null;
         try {
             @SuppressWarnings("unchecked")
@@ -228,7 +228,7 @@ public class RenderController {
                             + "Cannot safely locate output files for deletion."));
         }
 
-        // Change 8: Path traversal check
+        // Path traversal check
         Path jobRoot = Path.of(getJobRoot()).toAbsolutePath().normalize();
         Path jobDir;
         try {
@@ -245,7 +245,7 @@ public class RenderController {
                     .body(Map.of("error", "Invalid job ID — path resolution failed."));
         }
 
-        // Change 9: DELETE from Flamenco first
+        // DELETE from Flamenco first
         try {
             restTemplate.delete(managerUrl + "/api/v3/jobs/" + flamencoJobId);
             log.info("Job {} deleted from Flamenco", flamencoJobId);
@@ -255,7 +255,7 @@ public class RenderController {
                     .body(Map.of("error", "Failed to delete job from Flamenco. No files were touched."));
         }
 
-        // Change 10: Delete filesystem directory second
+        // Delete filesystem directory second
         if (Files.exists(jobDir)) {
             try {
                 deleteDirectory(jobDir);
@@ -457,7 +457,7 @@ public class RenderController {
         }
         boolean useGpu = jobType.startsWith("cycles-");
 
-        // Fetch job types from manager to get the type_etag — this is what
+        // Fetch job types from manager to get the type_etag, this is what
         // the Blender add-on does and Flamenco expects it on submission.
         String typeEtag = fetchJobTypeEtag(jobType);
 
@@ -494,7 +494,7 @@ public class RenderController {
     /**
      * Calls GET /api/v3/jobs/types to load all job types (including custom scripts)
      * and returns the etag for the requested type. Flamenco only loads custom JS
-     * job types when this endpoint is called, so we must call it before submitting.
+     * job types when this endpoint is called, so it has to be called before submitting.
      */
     @SuppressWarnings("unchecked")
     private String fetchJobTypeEtag(String jobType) {
