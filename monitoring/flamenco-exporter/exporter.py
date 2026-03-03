@@ -13,7 +13,6 @@ from prometheus_client import start_http_server, Gauge, Counter, Histogram, Info
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, REGISTRY
 from typing import Dict, List, Optional
 
-# Configuration from environment variables
 FLAMENCO_URL = os.getenv('FLAMENCO_API_URL', 'http://flamenco-manager:8080')
 EXPORTER_PORT = int(os.getenv('EXPORTER_PORT', '9090'))
 SCRAPE_INTERVAL = int(os.getenv('SCRAPE_INTERVAL', '15'))
@@ -26,7 +25,6 @@ REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '10'))
 PROMETHEUS_URL = os.getenv('PROMETHEUS_URL', 'http://prometheus:9090')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
-# Setup logging
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -35,12 +33,12 @@ logger = logging.getLogger('flamenco-exporter')
 
 # Prometheus Metrics
 
-# Job Metrics
+# Job
 job_total = Gauge('flamenco_jobs_total', 'Total number of jobs')
 job_status = Gauge('flamenco_job_status', 'Job count by status', ['status'])
 job_priority = Gauge('flamenco_job_priority_distribution', 'Jobs by priority level', ['priority'])
 
-# Worker Metrics
+# Worker
 worker_total = Gauge('flamenco_workers_total', 'Total number of workers')
 worker_status = Gauge('flamenco_worker_status', 'Worker count by status', ['status'])
 worker_active = Gauge('flamenco_workers_active', 'Number of active workers')
@@ -51,14 +49,14 @@ worker_cpu_usage = Gauge('flamenco_worker_cpu_usage_percent', 'Worker CPU usage 
 worker_memory_usage = Gauge('flamenco_worker_memory_usage_bytes', 'Worker memory usage in bytes (from cAdvisor)', ['worker_id', 'worker_name', 'worker_num'])
 worker_last_seen = Gauge('flamenco_worker_last_seen_timestamp', 'Unix timestamp of when the worker was last seen', ['worker_id', 'worker_name', 'worker_num'])
 
-# Task Metrics
+# Task
 task_total = Gauge('flamenco_tasks_total', 'Total number of tasks')
 task_status = Gauge('flamenco_task_status', 'Task count by status', ['status'])
 task_completion_rate = Gauge('flamenco_task_completion_rate', 'Task completion rate (completed/total)')
 task_failure_rate = Gauge('flamenco_task_failure_rate', 'Task failure rate (failed/total)')
 task_pipeline_sampled = Gauge('flamenco_task_pipeline_sampled', 'Tasks in pipeline (sampled)', ['status'])
 
-# API Performance Metrics
+# API
 api_request_duration = Histogram(
     'flamenco_api_request_duration_seconds',
     'Flamenco API request duration',
@@ -67,14 +65,14 @@ api_request_duration = Histogram(
 api_request_total = Counter('flamenco_api_requests_total', 'Total Flamenco API requests', ['endpoint', 'status'])
 api_errors_total = Counter('flamenco_api_errors_total', 'Total Flamenco API errors', ['endpoint'])
 
-# Exporter Metrics
+# Exporter
 exporter_scrape_duration = Gauge('flamenco_exporter_scrape_duration_seconds', 'Time taken to scrape Flamenco API')
 exporter_last_scrape_timestamp = Gauge('flamenco_exporter_last_scrape_timestamp', 'Timestamp of last successful scrape')
 task_sampling_active = Gauge('flamenco_task_sampling_active', 'Whether task sampling is currently active (1=yes, 0=no)')
 task_sample_size = Gauge('flamenco_task_sample_size', 'Number of tasks sampled in last scrape')
 jobs_sampled = Gauge('flamenco_jobs_sampled', 'Number of jobs sampled for task metrics')
 
-# Worker Tag Metrics
+# Worker Tag
 worker_tag_count = Gauge('flamenco_worker_tag_count', 'Number of workers per tag', ['tag_name'])
 
 # Farm Status
@@ -99,7 +97,6 @@ class FlamencoAPIClient:
             response = self.session.request(method, url, **kwargs)
             duration = time.time() - start_time
             
-            # Track metrics
             api_request_duration.labels(endpoint=endpoint, method=method).observe(duration)
             api_request_total.labels(endpoint=endpoint, status=response.status_code).inc()
             
@@ -177,7 +174,7 @@ class FlamencoMetricsCollector:
             status_counts[status] = status_counts.get(status, 0) + 1
             
             # Categorize priority
-            # requeueing is a transient state, count it separately
+            # requeueing is a transient state, counts seperate
             if status == 'requeueing':
                 priority_counts['requeueing'] += 1
                 continue
@@ -261,7 +258,7 @@ class FlamencoMetricsCollector:
                 except Exception as e:
                     logger.warning(f"Could not parse last_seen for worker {worker_name}: {e}")
 
-            # Real CPU/memory from cAdvisor via Prometheus
+            # CPU/memory from cAdvisor via Prometheus
             self._collect_worker_cadvisor_metrics(worker_id, worker_name, worker_num)
 
         # Clear stale worker status labels before updating
