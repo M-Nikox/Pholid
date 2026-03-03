@@ -1,4 +1,4 @@
-/**
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
  * Pangolin Utility Functions
  * Shared helper functions
  */

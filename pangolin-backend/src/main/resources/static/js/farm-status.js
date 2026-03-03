@@ -1,4 +1,4 @@
-/**
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
  * Pangolin Farm Status
  * Polls /api/farm/status and updates the header badge dot and label.
  */

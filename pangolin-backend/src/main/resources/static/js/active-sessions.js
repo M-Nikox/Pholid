@@ -1,6 +1,5 @@
-/**
- * Pangolin Render Manager - Active Sessions Module (CORRECT VERSION)
- * For the NEW orange-themed Pangolin design with Tailwind
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ * Pangolin Render Manager - Active Sessions Module
  */
 
 const activeSessions = (() => {

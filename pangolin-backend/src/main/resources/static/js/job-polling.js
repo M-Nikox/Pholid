@@ -1,4 +1,4 @@
-/**
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
  * Pangolin Job Polling
  * Polls the output directory status endpoint to detect when rendered files
  * are ready on disk. Fires pangolin:renderComplete for the notification system.

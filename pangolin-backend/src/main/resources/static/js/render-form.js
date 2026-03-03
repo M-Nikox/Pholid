@@ -1,5 +1,5 @@
-/**
- * Pangolin Render Form Handler - Enhanced Validation Version
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ * Pangolin Render Form Handler
  * Handles form submission, validation, and file size checks
  */
 
@@ -10,7 +10,7 @@ const renderForm = (() => {
 
     let expectedFrames = 0;
 
-    /**
+    /*
      * Initialize form handlers
      */
     function init() {
