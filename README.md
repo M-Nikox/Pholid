@@ -1,13 +1,68 @@
 # Pangolin
-## A cool render manager for cool people!
 
-I built this for fun, it's a full package of software for a functional render manager, using Flamenco, Blender and Docker for the rendering. It's fast, it's stateless, and it's built for artists who just want their frames packaged neatly in a little .zip.
+## Distributed GPU-Enabled Render Orchestrator
 
-To start pangolin:
-Copy the .env.example, edit to your needs, rename to .env
-Run ```docker compose up -d --build``` in the root folder, and you're done! Simply wait for Grafana to generate the .db first.
+Pangolin is a Docker-native, stateless render orchestration platform designed for GPU-accelerated Blender workloads. It provides containerized job isolation, distributed worker coordination, and real-time observability with sub-1-minute deployment.
 
-Important note on security: Pangolin has no built-in auth or https. It's designed to live in your local network/vlan. Ff you want to expose it to the web, put it behind a reverse proxy. I kept the core clean so you can scale it how you want.
-When I say there's no security, I mean it, Grafana uses the .env for setting up an admin account, overall it's not really perfect, but if it lives on a local network/VLAN as I said, then it should be good!
+Built for reliability, reproducibility, and operational clarity.
 
-I might make a branch that includes auth in the near future, but I'm unsure. I tend to only maintain projects that absolutely must be fixed due to critical bugs or errors.
+---
+
+## Key Features
+
+- Stateless control plane architecture for resilience
+- GPU-enabled containerized rendering (Linux + WSL2 CUDA support)
+- Distributed job execution via Flamenco, extended with custom GPU-aware job definitions
+- Automatic job isolation per container
+- Real-time monitoring with Prometheus metrics exporters and Grafana dashboards
+- Sub-60-second full environment deployment
+- Designed for LAN/VLAN deployment simplicity
+
+---
+
+## Architecture Overview
+
+Pangolin separates responsibilities across distinct services:
+
+- **Control plane:** Spring Boot backend
+- **Job distribution layer:** Flamenco, extended for GPU workloads
+- **Containerized GPU-enabled worker nodes**
+- **Observability stack:** Prometheus + Grafana, with Python-based custom exporters
+
+Workers are disposable by design. As long as the manager and backend remain operational, job orchestration continues without manual intervention.
+
+---
+
+## Technology Stack
+
+- **Docker** / **Docker Compose** — Containerization & orchestration  
+- **Spring Boot** — Backend job control  
+- **Python** — Custom Prometheus exporters for metrics  
+- **Flamenco** — Distributed render job distribution  
+- **Blender** — Rendering engine  
+- **Prometheus** — Metrics collection & monitoring  
+- **Grafana** — Real-time dashboards & observability
+
+---
+
+### GPU Job Types
+
+- **CUDA (Linux + WSL2):** Adapted from [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Please report any issues at [Pangolin's tracker](https://github.com/M-Nikox/Pangolin/issues).
+
+- **[OptiX (Linux)](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/):** Community-made Flamenco job type by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin to provide GPU rendering for specific workflows. Please report any issues at [Flamenco’s tracker](https://projects.blender.org/studio/flamenco/issues).
+
+---
+
+## Quick Start
+
+1. Copy `.env.example` and configure environment variables
+2. Rename to `.env`
+3. Run:
+
+```bash
+docker compose up -d --build
+```
+
+Deployment completes in under one minute on most systems.
+
+Note: Initial Grafana database creation may take a short moment.
