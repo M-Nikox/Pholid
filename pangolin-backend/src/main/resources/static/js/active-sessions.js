@@ -65,18 +65,18 @@ const activeSessions = (() => {
             
             renderActiveJobs(activeJobs);
 
-            // Detect jobs that just left the active list — they completed/failed/canceled
+            // Detect jobs that just left the active list: they completed/failed/canceled
             // Refresh the Previous panel immediately so new entries appear without page reload
             const currentIds = new Set(activeJobs.map(j => j.id));
             const jobsJustFinished = [..._lastActiveIds].some(id => !currentIds.has(id));
             if (jobsJustFinished) {
-                console.log('✅ Job(s) completed — refreshing Previous panel');
+                console.log('✅ Job(s) completed, refreshing Previous panel');
                 previousJobsOffset = 0;
                 fetchAndDisplayPreviousJobs();
             }
             _lastActiveIds = currentIds;
 
-            // Pause polling when nothing is active — resume on next submission
+            // Pause polling when nothing is active, then resume on next submission
             if (activeJobs.length === 0 && pollInterval) {
                 stopPolling();
             }
@@ -166,7 +166,7 @@ const activeSessions = (() => {
                 + '</div>'
                 + '</div>';
         }).join('');
-        // Wire up delete buttons — stop propagation so the row click (log modal) doesn't also fire
+        // Wire up delete buttons, stop propagation so the row click (log modal) doesn't also fire
         container.querySelectorAll('.delete-job-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -228,10 +228,10 @@ const activeSessions = (() => {
         jobs.forEach((job, index) => {
             const existing = container.querySelector('.job-card[data-job-id="' + job.id + '"]');
             if (existing) {
-                // In-place update — patch only the parts that change to avoid jitter
+                // In-place update, patch only the parts that change to avoid jitter
                 updateJobCard(existing, job);
             } else {
-                // New card — insert at correct position with enter animation
+                // New card, insert at correct position with enter animation
                 const card = createJobCard(job);
                 const allCards = container.querySelectorAll('.job-card[data-job-id]');
                 if (index < allCards.length) {
@@ -414,7 +414,7 @@ const activeSessions = (() => {
             buttons.push(`
                 <button class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition-all hover:-translate-y-0.5"
                         onclick="window.location.href='/download/${pangolinId}'"
-                        title="${isPartial ? 'Job is still rendering — download will contain completed frames only' : 'Download all rendered frames'}">
+                        title="${isPartial ? 'Job is still rendering, download will contain completed frames only' : 'Download all rendered frames'}">
                     📦 ${isPartial ? 'Download (partial)' : 'Download'}
                 </button>
             `);
@@ -510,7 +510,7 @@ const activeSessions = (() => {
         const isConfirming = btn.dataset.confirm === 'true';
 
         if (!isConfirming) {
-            // First click — enter confirm state
+            // First click - enter confirm state
             btn.dataset.confirm = 'true';
             btn.textContent = 'Confirm?';
             btn.style.background = 'rgba(239,68,68,0.25)';
@@ -524,7 +524,7 @@ const activeSessions = (() => {
                 btn.style.borderColor = 'rgba(239,68,68,0.3)';
             }, 3000);
         } else {
-            // Second click — execute delete
+            // Second click - execute delete
             clearTimeout(btn._revertTimer);
             btn.disabled = true;
             btn.textContent = '...';
@@ -542,7 +542,7 @@ const activeSessions = (() => {
             const data = await response.json();
 
             if (response.ok) {
-                // Success — remove card from the list
+                // Success - remove card from the list
                 console.log(`✅ Job ${jobId} deleted successfully`);
                 const card = document.querySelector(`[data-flamenco-id="${jobId}"]`);
                 if (card) {
@@ -560,7 +560,7 @@ const activeSessions = (() => {
                 resetDeleteBtn(btn);
 
             } else if (response.status === 207) {
-                // Partial failure — Flamenco deleted but files remain
+                // Partial failure - Flamenco deleted but files remain
                 const path = data.path || 'unknown path';
                 alert(`⚠️ Job was removed from Flamenco but output files could not be deleted.
 

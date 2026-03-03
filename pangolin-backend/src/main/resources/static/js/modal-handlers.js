@@ -136,7 +136,7 @@ const modalHandlers = (() => {
             const lines = text.split('\n').map(line => {
                 let color = 'inherit';
 
-                // 🔴 Errors — EGL/GL errors, explicit failures, exceptions
+                // 🔴 Errors - EGL/GL errors, explicit failures, exceptions
                 if (/error|failed|exception|traceback|EGL_BAD|fatal/i.test(line)) {
                     color = '#ef4444';
 
@@ -144,15 +144,15 @@ const modalHandlers = (() => {
                 } else if (/warn/i.test(line)) {
                     color = '#f97316';
 
-                // 🟢 Success — saves, completions, status transitions to good states
+                // 🟢 Success - saves, completions, status transitions to good states
                 } else if (/saved|-> completed|-> active|success|done|quit/i.test(line)) {
                     color = '#22c55e';
 
-                // 🔵 Flamenco system lines — timestamps like 2026-02-19T...
+                // 🔵 Flamenco system lines - timestamps like 2026-02-19T...
                 } else if (/^\d{4}-\d{2}-\d{2}T/.test(line)) {
                     color = '#60a5fa';
                 }
-                // Default (inherit): normal Blender render progress — pid=20 > render | ...
+                // Default (inherit): normal Blender render progress: pid=20 > render | ...
 
                 const escaped = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 return `<span style="color:${color}">${escaped}</span>`;

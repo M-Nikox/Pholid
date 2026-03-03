@@ -1717,12 +1717,12 @@
       "targets": [
         {
           "expr": "pangolin_gpu_memory_used_bytes",
-          "legendFormat": "Used — {{gpu_name}}",
+          "legendFormat": "Used - {{gpu_name}}",
           "refId": "A"
         },
         {
           "expr": "pangolin_gpu_memory_total_bytes",
-          "legendFormat": "Total — {{gpu_name}}",
+          "legendFormat": "Total - {{gpu_name}}",
           "refId": "B"
         }
       ],
@@ -2009,12 +2009,12 @@
       "targets": [
         {
           "expr": "pangolin_gpu_sm_clock_mhz",
-          "legendFormat": "SM — {{gpu_name}}",
+          "legendFormat": "SM - {{gpu_name}}",
           "refId": "A"
         },
         {
           "expr": "pangolin_gpu_mem_clock_mhz",
-          "legendFormat": "Mem — {{gpu_name}}",
+          "legendFormat": "Mem - {{gpu_name}}",
           "refId": "B"
         }
       ],

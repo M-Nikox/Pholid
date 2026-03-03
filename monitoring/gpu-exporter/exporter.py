@@ -76,7 +76,7 @@ def query_nvidia_smi():
         return gpus
 
     except FileNotFoundError:
-        logger.error('nvidia-smi not found — is the NVIDIA runtime available?')
+        logger.error('nvidia-smi not found, is the NVIDIA runtime available?')
         return None
     except subprocess.TimeoutExpired:
         logger.error('nvidia-smi timed out')
@@ -121,7 +121,7 @@ def collect():
         if sm_clk is not None: gpu_sm_clock.labels(*labels).set(sm_clk)
         if m_clk is not None: gpu_mem_clock.labels(*labels).set(m_clk)
 
-        # Memory — nvidia-smi reports in MiB, convert to bytes for consistency
+        # Memory - nvidia-smi reports in MiB, convert to bytes for consistency
         if m_used is not None:
             gpu_mem_used.labels(*labels).set(m_used * 1024 * 1024)
         if m_tot is not None:
@@ -129,7 +129,7 @@ def collect():
         if m_used is not None and m_tot is not None and m_tot > 0:
             gpu_mem_pct.labels(*labels).set(round(m_used / m_tot * 100, 1))
 
-        # Power — reported as "XX.YY W" sometimes; safe_float handles it
+        # Power - reported as "XX.YY W" sometimes; safe_float handles it
         if pwr    is not None: gpu_power_draw.labels(*labels).set(pwr)
         if plimit is not None: gpu_power_limit.labels(*labels).set(plimit)
 

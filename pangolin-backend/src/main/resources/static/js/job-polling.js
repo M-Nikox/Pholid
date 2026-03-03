@@ -51,7 +51,7 @@ const jobPolling = (() => {
     }
 
     /**
-     * Files are ready — fire completion event and stop polling
+     * Files are ready: fire completion event and stop polling
      */
     function finishJob() {
         clearInterval(pollInterval);

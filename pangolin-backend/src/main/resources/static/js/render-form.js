@@ -39,7 +39,7 @@ const renderForm = (() => {
         // Form submission
         form.addEventListener('submit', handleSubmit);
 
-        // Compute mode — warn if OptiX selected on Windows/WSL2
+        // Compute mode: warn if OptiX selected on Windows/WSL2
         setupComputeModeWarning();
     }
 
@@ -267,7 +267,7 @@ const renderForm = (() => {
     async function handleSubmit(e) {
         e.preventDefault();
 
-        // Hard guard — never allow OptiX submission on Windows regardless of button state
+        // Hard guard: never allow OptiX submission on Windows regardless of button state
         const computeSelect = document.getElementById('computeMode');
         if (computeSelect && computeSelect.value === 'gpu-optix' && /windows/i.test(navigator.userAgent)) {
             checkComputeWarning();
@@ -324,7 +324,7 @@ const renderForm = (() => {
             return;
         }
 
-        // Prepare UI for upload — button already says 'Uploading...'
+        // Prepare UI for upload: button already says 'Uploading...'
 
         // Submit to backend
         const formData = new FormData(form);

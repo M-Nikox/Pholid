@@ -1,5 +1,5 @@
 /* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Render Manager — Main Stylesheet 
+ * Pangolin Render Manager - Main Stylesheet 
  */
 
 :root {
@@ -78,7 +78,7 @@ body {
 
 /* ===== TACTILE INTERACTIONS ===== */
 
-/* Inputs — hover invite + focus glow */
+/* Inputs - hover invite + focus glow */
 .glass-input {
     transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
@@ -90,7 +90,7 @@ input.glass-input:focus {
     box-shadow: 0 0 0 3px rgba(250, 129, 18, 0.15);
 }
 
-/* Drop zone — hover + drag-over state */
+/* Drop zone - hover + drag-over state */
 #dropZone {
     transition: border-color 200ms ease-out, background 200ms ease-out,
                 transform 150ms ease-out, box-shadow 200ms ease-out;
@@ -123,7 +123,7 @@ header button.glass-card:active {
     transition-duration: 60ms;
 }
 
-/* Job cards — lift + left border accent */
+/* Job cards - lift + left border accent */
 .job-card {
     transition: transform 150ms ease-out, box-shadow 150ms ease-out,
                 border-left-color 150ms ease-out;
@@ -135,7 +135,7 @@ header button.glass-card:active {
     border-left-color: rgba(250, 129, 18, 0.65) !important;
 }
 
-/* History items — subtle horizontal nudge + background highlight */
+/* History items - subtle horizontal nudge + background highlight */
 .history-item {
     transition: transform 150ms ease-out, background 150ms ease-out;
 }
@@ -188,21 +188,21 @@ header button.glass-card:active {
     mask-size: contain;
     -webkit-mask-position: center;
     mask-position: center;
-    /* Hide the actual img element — color comes from background */
+    /* Hide the actual img element so color comes from background */
     background-color: currentColor;
 }
 
-/* Header — pangolin-purple-dark on the orange background */
+/* Header - pangolin-purple-dark on the orange background */
 .pangolin-logo-header {
     color: #1C1328;
 }
 
-/* Guide modal — pangolin-purple-dark in light mode */
+/* Guide modal - pangolin-purple-dark in light mode */
 .pangolin-logo-guide {
     color: #1C1328;
 }
 
-/* Guide modal — pangolin-cream in dark mode */
+/* Guide modal - pangolin-cream in dark mode */
 [data-theme="dark"] .pangolin-logo-guide {
     color: #FAF3E1;
 }

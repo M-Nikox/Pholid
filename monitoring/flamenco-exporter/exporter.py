@@ -189,7 +189,7 @@ class FlamencoMetricsCollector:
             else:
                 priority_counts['urgent'] += 1
         
-        # Clear stale label series before updating — prevents accumulation
+        # Clear stale label series before updating prevents accumulation
         # of old statuses that no longer exist in the current scrape
         job_status.clear()
         job_priority.clear()
@@ -443,7 +443,7 @@ class FlamencoMetricsCollector:
         logger.info(f"Collected metrics for {len(tags)} worker tags")
 
     def collect_all_metrics(self):
-        """Collect all metrics — fetch jobs once, pass to sub-collectors"""
+        """Collect all metrics, fetch jobs once, pass to sub-collectors"""
         start_time = time.time()
 
         try:

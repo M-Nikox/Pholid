@@ -242,7 +242,7 @@ public class RenderController {
         if (!jobDir.startsWith(jobRoot)) {
             log.error("Path traversal attempt detected for pangolinJobId: {}", pangolinJobId);
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Invalid job ID — path resolution failed."));
+                    .body(Map.of("error", "Invalid job ID - path resolution failed."));
         }
 
         // DELETE from Flamenco first

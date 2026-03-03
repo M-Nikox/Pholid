@@ -1,7 +1,7 @@
 # Copyright © 2026 Pangolin
 # SPDX-License-Identifier: Apache-2.0
 #
-# GPU metrics exporter — requires NVIDIA container runtime on the host.
+# GPU metrics exporter - requires NVIDIA container runtime on the host.
 # Uses the CUDA runtime image so nvidia-smi is available inside the container.
 FROM nvidia/cuda:13.1.1-runtime-ubuntu24.04
 

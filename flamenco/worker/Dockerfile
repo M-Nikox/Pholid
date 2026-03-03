@@ -1,7 +1,7 @@
 # Copyright © 2026 Pangolin
 # SPDX-License-Identifier: Apache-2.0
 
-# CUDA 13.1.1 runtime on Ubuntu 24.04 — exposes GPU to Blender (Cycles CUDA/OptiX)
+# CUDA 13.1.1 runtime on Ubuntu 24.04 - exposes GPU to Blender (Cycles CUDA/OptiX)
 # Requires nvidia-container-toolkit on the host. See README for host setup.
 FROM nvidia/cuda:13.1.1-runtime-ubuntu24.04
 
