@@ -66,3 +66,7 @@ docker compose up -d --build
 Deployment completes in under one minute on most systems.
 
 Note: Initial Grafana database creation may take a short moment.
+
+## Acknowledgments
+
+Thanks to @yeezygambino for consistently testing releases and providing valuable feedback.
