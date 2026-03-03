@@ -52,14 +52,14 @@ services:
       - flamenco-shared:/shared
       - /usr/lib/wsl:/usr/lib/wsl:ro # Allow access to WSL2 required NVIDIA OptiX libraries (read-only)
     deploy:
-      replicas: 2  # Scale workers as needed
+      replicas: ${WORKER_REPLICAS:-2}
       resources:
         limits:
-          cpus: '4.0'
-          memory: 8G
+          cpus: ${WORKER_CPU_LIMIT:-4.0}
+          memory: ${WORKER_MEM_LIMIT:-8G}
         reservations:
-          cpus: '2.0'
-          memory: 4G
+          cpus: ${WORKER_CPU_RESERVE:-2.0}
+          memory: ${WORKER_MEM_RESERVE:-4G}
           devices:
             - driver: nvidia
               count: all
@@ -104,7 +104,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     volumes:
@@ -190,14 +190,14 @@ services:
       - FLAMENCO_API_URL=http://flamenco-manager:8080
       - PROMETHEUS_URL=${PROMETHEUS_URL:-http://prometheus:9090}
       - EXPORTER_PORT=9090
-      - SCRAPE_INTERVAL=15
-      - WORKER_SCRAPE_INTERVAL=15
-      - TASK_SCRAPE_INTERVAL=60
-      - TASK_SAMPLE_SIZE_MIN=3
-      - TASK_SAMPLE_SIZE_MAX=5
-      - MAX_JOB_COUNT_THRESHOLD=100
-      - REQUEST_TIMEOUT=10
-      - LOG_LEVEL=INFO
+      - SCRAPE_INTERVAL=${EXPORTER_SCRAPE_INTERVAL:-15}
+      - WORKER_SCRAPE_INTERVAL=${EXPORTER_WORKER_SCRAPE_INTERVAL:-15}
+      - TASK_SCRAPE_INTERVAL=${EXPORTER_TASK_SCRAPE_INTERVAL:-60}
+      - TASK_SAMPLE_SIZE_MIN=${EXPORTER_TASK_SAMPLE_MIN:-3}
+      - TASK_SAMPLE_SIZE_MAX=${EXPORTER_TASK_SAMPLE_MAX:-5}
+      - MAX_JOB_COUNT_THRESHOLD=${EXPORTER_MAX_JOB_THRESHOLD:-100}
+      - REQUEST_TIMEOUT=${EXPORTER_REQUEST_TIMEOUT:-10}
+      - LOG_LEVEL=${EXPORTER_LOG_LEVEL:-INFO}
     networks:
       - pangolin-network
     depends_on:
@@ -231,8 +231,8 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - EXPORTER_PORT=9091
-      - SCRAPE_INTERVAL=5
-      - LOG_LEVEL=INFO
+      - SCRAPE_INTERVAL=${GPU_EXPORTER_SCRAPE_INTERVAL:-5}
+      - LOG_LEVEL=${GPU_EXPORTER_LOG_LEVEL:-INFO}
     volumes:
       - /usr/lib/wsl:/usr/lib/wsl:ro
     networks:
