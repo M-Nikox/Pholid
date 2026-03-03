@@ -96,7 +96,7 @@ services:
   # PROMETHEUS - Metrics Collection
   # ============================================
   prometheus:
-    image: prom/prometheus:v3.5.1
+    image: prom/prometheus:v3.10.0
     container_name: pangolin-prometheus
     restart: unless-stopped
     ports:                        # Feel free to remove the ports from Prometheus if you don't need them
@@ -124,7 +124,7 @@ services:
   # GRAFANA - Visualization & Dashboards
   # ============================================
   grafana:
-    image: grafana/grafana:12.3.2
+    image: grafana/grafana:12.3.4
     container_name: pangolin-grafana
     restart: unless-stopped
     ports:
@@ -157,7 +157,7 @@ services:
   # cADVISOR - Container Metrics
   # ============================================
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    image: ghcr.io/google/cadvisor:0.56.2
     container_name: pangolin-cadvisor
     restart: unless-stopped
     privileged: true
