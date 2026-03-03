@@ -8,16 +8,15 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.1</version>
+		<version>4.0.3</version>
 		<relativePath/>
 	</parent>
 
 	<groupId>com.pangolin</groupId>
 	<artifactId>pangolin-backend</artifactId>
-	<version>0.1.0</version>
+	<version>1.0.0</version>
 
 	<properties>
-		<!-- Use Java 21 for compile & runtime -->
 		<java.version>21</java.version>
 	</properties>
 
@@ -33,7 +32,7 @@
 		<dependency>
 			<groupId>com.github.luben</groupId>
 			<artifactId>zstd-jni</artifactId>
-			<version>1.5.7-6</version> </dependency>
+			<version>1.5.7-7</version> </dependency>
 	</dependencies>
 
 	<build>
@@ -41,7 +40,7 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<version>4.0.1</version>
+				<version>4.0.3</version>
 			</plugin>
 		</plugins>
 	</build>
