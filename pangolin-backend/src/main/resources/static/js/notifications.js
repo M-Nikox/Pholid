@@ -1,4 +1,4 @@
-/**
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
  * Pangolin Notification Handler
  * Manages browser notifications and audio alerts for render completion
  */
@@ -105,8 +105,8 @@ const notifications = (() => {
             try {
                 const notification = new Notification('🎬 Render Complete!', {
                     body: `${projectName} finished (${frameCount} frames)`,
-                    icon: 'pangolin_happy.png',
-                    badge: 'favicon.ico',
+                    icon: '/svg/pangolin.svg',
+                    badge: '/svg/pangolin.svg',
                     tag: 'pangolin-render-complete', // Prevents notification spam
                     requireInteraction: false
                 });
