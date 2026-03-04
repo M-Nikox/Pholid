@@ -101,24 +101,48 @@
                         </label>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                                   <div class="grid grid-cols-2 gap-4 items-start">
+                        <!-- Priority dropdown -->
                         <div class="p-4 glass-card bg-orange-500/5">
                             <span class="text-[10px] block font-bold opacity-40 uppercase mb-2">Priority Level</span>
-                            <select name="priority" class="bg-transparent font-bold w-full outline-none cursor-pointer" style="color: inherit;">
+                            <select name="priority" id="prioritySelect" class="hidden">
                                 <option value="1">Standard</option>
                                 <option value="2">High (Priority Queue)</option>
                                 <option value="3">Ultra (Immediate)</option>
                             </select>
+                            <div class="pangolin-dropdown" data-target="prioritySelect">
+                                <button type="button" class="pangolin-dropdown-btn">
+                                    <span class="pangolin-dropdown-label font-bold">Standard</span>
+                                    <svg class="pangolin-dropdown-arrow" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <ul class="pangolin-dropdown-list">
+                                    <li class="pangolin-dropdown-option selected" data-value="1">Standard</li>
+                                    <li class="pangolin-dropdown-option" data-value="2">High (Priority Queue)</li>
+                                    <li class="pangolin-dropdown-option" data-value="3">Ultra (Immediate)</li>
+                                </ul>
+                            </div>
                         </div>
+                        <!-- Compute Mode dropdown -->
                         <div class="p-4 glass-card bg-orange-500/5">
                             <span class="text-[10px] block font-bold opacity-40 uppercase mb-2">Compute Mode</span>
-                            <select name="computeMode" id="computeMode" class="bg-transparent font-bold w-full outline-none cursor-pointer" style="color: inherit;">
+                            <select name="computeMode" id="computeMode" class="hidden">
                                 <option value="gpu-optix">GPU - OptiX (Linux)</option>
                                 <option value="gpu-cuda" selected>GPU - CUDA (WSL2)</option>
                                 <option value="cpu">CPU - Standard</option>
                             </select>
+                            <div class="pangolin-dropdown" data-target="computeMode">
+                                <button type="button" class="pangolin-dropdown-btn">
+                                    <span class="pangolin-dropdown-label font-bold">GPU - CUDA (WSL2)</span>
+                                    <svg class="pangolin-dropdown-arrow" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <ul class="pangolin-dropdown-list">
+                                    <li class="pangolin-dropdown-option" data-value="gpu-optix">GPU - OptiX (Linux)</li>
+                                    <li class="pangolin-dropdown-option selected" data-value="gpu-cuda">GPU - CUDA (WSL2)</li>
+                                    <li class="pangolin-dropdown-option" data-value="cpu">CPU - Standard</li>
+                                </ul>
+                            </div>
                             <p id="optixWarning" style="display:none; color:#f97316;" class="text-[10px] mt-2 font-bold">
-                                ⚠ OptiX requires native Linux. On Windows/WSL2 use CUDA instead.
+                                &#9888; OptiX requires native Linux. On Windows/WSL2 use CUDA instead.
                             </p>
                         </div>
                     </div>

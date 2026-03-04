@@ -1,10 +1,10 @@
-/*
+/**
  * Copyright © 2026 Pangolin
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.pangolin;
+package com.pangolin.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -53,6 +53,10 @@ Workers are disposable by design. As long as the manager and backend remain oper
 
 ---
 
+### Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23)
+
+---
+
 ## Quick Start
 
 1. Copy `.env.example` and configure environment variables

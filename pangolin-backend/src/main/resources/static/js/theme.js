@@ -1,6 +1,6 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Theme Switcher
- * Handles light/dark mode toggling and icon switching
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ *  Pangolin Theme Switcher
+ *  Handles light/dark mode toggling and icon switching
  */
 
 const themeModule = (() => {

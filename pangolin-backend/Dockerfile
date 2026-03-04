@@ -7,7 +7,7 @@ WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 
-RUN mvn clean package -DskipTests -B
+RUN mvn clean package -Dmaven.test.skip=true -B
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
@@ -16,4 +16,10 @@ COPY --from=build /app/target/pangolin-backend-1.0.0.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["java", \
+  "-XX:+UseZGC", \
+  "-XX:+ZGenerational", \
+  "-jar", "app.jar"]

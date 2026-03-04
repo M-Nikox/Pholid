@@ -1,4 +1,4 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
  * Pangolin Notification Handler
  * Manages browser notifications and audio alerts for render completion
  */

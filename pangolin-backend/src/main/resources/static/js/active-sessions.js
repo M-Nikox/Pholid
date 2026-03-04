@@ -1,5 +1,5 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Render Manager - Active Sessions Module
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ *  Pangolin Render Manager - Active Sessions Module
  */
 
 const activeSessions = (() => {
@@ -148,9 +148,24 @@ const activeSessions = (() => {
             const statusLabel = job.status === 'completed' ? 'Completed' : job.status === 'failed' ? 'Failed' : job.status === 'canceled' ? 'Canceled' : job.status;
             const pangolinId = job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id;
             const staggerDelay = (index * 18) + 'ms';
-            const downloadBtn = job.status === 'completed'
-                ? '<a href="/download/' + pangolinId + '" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);">Download</a>'
+
+            // Determine if delete button should appear
+            const showDelete = ['completed', 'failed', 'canceled'].includes(job.status);
+
+            // Build action buttons
+            const actions = [];
+            if (job.status === 'completed') {
+                actions.push(`<a href="/api/render/download/${pangolinId}" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);">Download</a>`);
+            }
+            if (showDelete) {
+                actions.push(`<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="${job.id}" data-confirm="false">Delete</button>`);
+            }
+
+            const actionsHtml = actions.length
+                ? `<div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all ml-3">${actions.join('')}</div>`
                 : '';
+
+            // Full card HTML – left side + actions (if any)
             return '<div class="history-item history-item-enter px-4 py-3 glass-input border-none flex items-center justify-between group rounded-xl" style="animation-delay:' + staggerDelay + '" data-flamenco-id="' + job.id + '">'
                 + '<div class="flex items-center gap-3 min-w-0">'
                 +   '<div class="w-2 h-2 rounded-full flex-shrink-0" style="background:' + statusColor + ';"></div>'
@@ -160,13 +175,11 @@ const activeSessions = (() => {
                 +     '<p class="text-xs mt-0.5" style="color:' + statusColor + ';opacity:0.8;">' + statusLabel + '</p>'
                 +   '</div>'
                 + '</div>'
-                + '<div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all ml-3">'
-                +   downloadBtn
-                +   '<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="' + job.id + '" data-confirm="false">Delete</button>'
-                + '</div>'
+                + actionsHtml
                 + '</div>';
         }).join('');
-        // Wire up delete buttons, stop propagation so the row click (log modal) doesn't also fire
+
+        // Re-attach event listeners (same as before)
         container.querySelectorAll('.delete-job-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -175,11 +188,9 @@ const activeSessions = (() => {
             });
         });
 
-        // Wire up row click → open log modal
         container.querySelectorAll('.history-item[data-flamenco-id]').forEach(row => {
             row.style.cursor = 'pointer';
             row.addEventListener('click', (e) => {
-                // Don't open modal if clicking a button/link inside the row
                 if (e.target.closest('button, a')) return;
                 const flamencoId = row.dataset.flamencoId;
                 const displayName = row.querySelector('p.font-semibold')?.textContent?.trim() || flamencoId;
@@ -413,7 +424,7 @@ const activeSessions = (() => {
             const isPartial = job.status === 'active';
             buttons.push(`
                 <button class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition-all hover:-translate-y-0.5"
-                        onclick="window.location.href='/download/${pangolinId}'"
+                        onclick="window.location.href='/api/render/download/${pangolinId}'"
                         title="${isPartial ? 'Job is still rendering, download will contain completed frames only' : 'Download all rendered frames'}">
                     📦 ${isPartial ? 'Download (partial)' : 'Download'}
                 </button>
@@ -519,7 +530,7 @@ const activeSessions = (() => {
             // Auto-revert after 3s
             btn._revertTimer = setTimeout(() => {
                 btn.dataset.confirm = 'false';
-                btn.textContent = '🗑';
+                btn.textContent = 'Delete';
                 btn.style.background = 'rgba(239,68,68,0.1)';
                 btn.style.borderColor = 'rgba(239,68,68,0.3)';
             }, 3000);
@@ -532,7 +543,7 @@ const activeSessions = (() => {
         }
     }
 
-    // Change 13: deleteJob with full/partial/disabled/failure response handling
+    // deleteJob with full/partial/disabled/failure response handling
     async function deleteJob(jobId, btn) {
         try {
             const response = await fetch(`/api/render/job/${jobId}`, {
@@ -542,7 +553,6 @@ const activeSessions = (() => {
             const data = await response.json();
 
             if (response.ok) {
-                // Success - remove card from the list
                 console.log(`✅ Job ${jobId} deleted successfully`);
                 const card = document.querySelector(`[data-flamenco-id="${jobId}"]`);
                 if (card) {
@@ -551,37 +561,28 @@ const activeSessions = (() => {
                     card.style.transform = 'translateX(8px)';
                     setTimeout(() => card.remove(), 200);
                 }
-                // Refresh previous sessions to sync count
                 fetchAndDisplayPreviousJobs();
 
             } else if (response.status === 403) {
-                // Feature disabled
-                alert('Delete is not enabled on this instance. Set ENABLE_DELETE=true in your .env to enable it.');
-                resetDeleteBtn(btn);
+                showDeleteError(btn, 'Delete not enabled. Set ENABLE_DELETE=true in .env');
 
             } else if (response.status === 207) {
-                // Partial failure - Flamenco deleted but files remain
-                const path = data.path || 'unknown path';
-                alert(`⚠️ Job was removed from Flamenco but output files could not be deleted.
-
-Path: ${path}
-
-You may need to remove these files manually.`);
-                // Still remove the card since Flamenco deletion succeeded
+                // Partial failure - Flamenco deleted but output files remain
                 const card = document.querySelector(`[data-flamenco-id="${jobId}"]`);
-                if (card) card.remove();
+                if (card) {
+                    showCardWarning(card, 'Job removed from Flamenco but output files could not be deleted. Remove them manually.');
+                    setTimeout(() => card.remove(), 5000);
+                }
                 fetchAndDisplayPreviousJobs();
 
             } else {
                 console.error('Delete failed:', data);
-                alert(`Failed to delete job: ${data.error || 'Unknown error'}`);
-                resetDeleteBtn(btn);
+                showDeleteError(btn, data.error || 'Delete failed');
             }
 
         } catch (e) {
             console.error('Delete request error:', e);
-            alert('Failed to delete job. Please try again.');
-            resetDeleteBtn(btn);
+            showDeleteError(btn, 'Network error. Please try again.');
         }
     }
 
@@ -589,9 +590,48 @@ You may need to remove these files manually.`);
         if (!btn) return;
         btn.disabled = false;
         btn.dataset.confirm = 'false';
-        btn.textContent = '🗑';
+        btn.textContent = 'Delete';
         btn.style.background = 'rgba(239,68,68,0.1)';
         btn.style.borderColor = 'rgba(239,68,68,0.3)';
+    }
+
+    // Flashes the delete button red briefly, then shows a small error line below the card content
+    function showDeleteError(btn, message) {
+        if (!btn) return;
+
+        // Flash the button border red without changing its text or size
+        btn.style.borderColor = 'rgba(239,68,68,0.8)';
+        btn.style.background  = 'rgba(239,68,68,0.2)';
+        setTimeout(() => resetDeleteBtn(btn), 4000);
+
+        const card = btn.closest('[data-flamenco-id]');
+        if (!card) return;
+
+        // Remove any existing error line before adding a new one
+        const existing = card.querySelector('.delete-error-msg');
+        if (existing) existing.remove();
+
+        // Make the card wrap so the error renders on its own line below
+        card.style.flexWrap = 'wrap';
+
+        const err = document.createElement('p');
+        err.className = 'delete-error-msg';
+        err.textContent = '⚠ ' + message;
+        err.style.cssText = 'font-size:10px;color:#ef4444;opacity:0.85;width:100%;padding:0 4px 2px;margin:0;';
+        card.appendChild(err);
+
+        setTimeout(() => {
+            err.remove();
+            card.style.flexWrap = '';
+        }, 4000);
+    }
+
+    // Appends an orange warning line to a card (used for 207 partial failure)
+    function showCardWarning(card, message) {
+        const warn = document.createElement('div');
+        warn.style.cssText = 'font-size:10px;color:#f97316;padding:4px 8px;opacity:0.85;';
+        warn.textContent = '⚠ ' + message;
+        card.appendChild(warn);
     }
 
     // Change 5: Load more previous jobs (pagination)
@@ -639,9 +679,21 @@ You may need to remove these files manually.`);
             const statusLabel = job.status === 'completed' ? 'Completed' : job.status === 'failed' ? 'Failed' : job.status === 'canceled' ? 'Canceled' : job.status;
             const pangolinId = job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id;
             const staggerDelay = (index * 18) + 'ms';
-            const downloadBtn = job.status === 'completed'
-                ? '<a href="/download/' + pangolinId + '" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);">Download</a>'
+
+            const showDelete = ['completed', 'failed', 'canceled'].includes(job.status);
+
+            const actions = [];
+            if (job.status === 'completed') {
+                actions.push(`<a href="/api/render/download/${pangolinId}" class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3);">Download</a>`);
+            }
+            if (showDelete) {
+                actions.push(`<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="${job.id}" data-confirm="false">Delete</button>`);
+            }
+
+            const actionsHtml = actions.length
+                ? `<div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all ml-3">${actions.join('')}</div>`
                 : '';
+
             const div = document.createElement('div');
             div.className = 'history-item history-item-enter px-4 py-3 glass-input border-none flex items-center justify-between group rounded-xl';
             div.style.animationDelay = staggerDelay;
@@ -654,10 +706,9 @@ You may need to remove these files manually.`);
                 +   '<p class="text-xs mt-0.5" style="color:' + statusColor + ';opacity:0.8;">' + statusLabel + '</p>'
                 + '</div>'
                 + '</div>'
-                + '<div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all ml-3">'
-                +   downloadBtn
-                +   '<button class="delete-job-btn text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all" style="background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3);" data-job-id="' + job.id + '" data-confirm="false">Delete</button>'
-                + '</div>';
+                + actionsHtml;
+
+            // Delete button listeners
             div.querySelectorAll('.delete-job-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -665,6 +716,7 @@ You may need to remove these files manually.`);
                     handleDeleteClick(btn);
                 });
             });
+
             // Row click → log modal
             div.style.cursor = 'pointer';
             div.addEventListener('click', (e) => {
@@ -675,6 +727,7 @@ You may need to remove these files manually.`);
                     detail: { flamencoId, displayName }
                 }));
             });
+
             container.appendChild(div);
         });
     }
