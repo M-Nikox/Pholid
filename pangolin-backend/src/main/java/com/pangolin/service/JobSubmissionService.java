@@ -216,6 +216,9 @@ public class JobSubmissionService {
         if (flamencoJob != null && flamencoJob.get("id") instanceof String fid) {
             return fid;
         }
+        if (flamencoJob != null) {
+            log.warn("Flamenco submit response for job {} is missing 'id' field; ownership tracking will be unavailable", jobId);
+        }
         return null;
     }
 
