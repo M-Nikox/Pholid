@@ -1,7 +1,7 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Grafana Panels
- * Handles tab switching for system metrics
- * Set GRAFANA_BASE_URL to enable live panels
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ *  Pangolin Grafana Panels
+ *  Handles tab switching for system metrics
+ *  Set GRAFANA_BASE_URL to enable live panels
  */
 
 const grafanaPanels = (() => {

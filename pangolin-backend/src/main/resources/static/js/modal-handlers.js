@@ -1,6 +1,6 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Modal Handlers
- * Manages the first-time guide modal.
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ *  Pangolin Modal Handlers
+ *  Manages the first-time guide modal.
  */
 
 const modalHandlers = (() => {
