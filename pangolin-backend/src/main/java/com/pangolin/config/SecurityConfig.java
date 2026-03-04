@@ -83,7 +83,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(oidcLoginSuccessHandler(auditLogService)))
-                .csrf(AbstractHttpConfigurer::disable);
+                // CSRF is kept enabled for the login/UI flow.
+                // REST API endpoints under /api/** are used with Bearer tokens (not cookies)
+                // and therefore do not require CSRF protection.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
             return http.build();
         }
 
