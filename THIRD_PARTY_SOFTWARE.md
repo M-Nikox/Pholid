@@ -13,6 +13,10 @@ All respective licenses remain the property of their original authors.
   https://docs.docker.com/compose/  
   Licensed under the Apache License 2.0
 
+- **Traefik**  
+  https://traefik.io/traefik/  
+  Licensed under the MIT License
+
 ## Backend
 
 - **Spring Boot**  

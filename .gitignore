@@ -1,3 +1,5 @@
 .env
 pangolin-backend/target
 .idea/
+# Docker secret files – never commit real passwords
+secrets/*.txt

@@ -1,5 +1,41 @@
 services:
   # ============================================
+  # TRAEFIK - Reverse Proxy / TLS Termination
+  # ============================================
+  # Routes HTTPS traffic to the backend and Grafana using Docker labels.
+  # TLS modes:
+  #   self-signed (default) – leave TRAEFIK_CERT_RESOLVER empty in .env;
+  #     Traefik generates a built-in self-signed certificate automatically.
+  #   letsencrypt – set TRAEFIK_CERT_RESOLVER=letsencrypt and ACME_EMAIL
+  #     in .env; Traefik uses ACME (HTTP-01 challenge on port 80).
+  traefik:
+    image: traefik:v3.4.1
+    container_name: pangolin-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"   # HTTP (redirected to HTTPS)
+      - "443:443" # HTTPS
+    environment:
+      # Toggle the Traefik dashboard (disabled by default)
+      - TRAEFIK_API_DASHBOARD=${TRAEFIK_DASHBOARD_ENABLED:-false}
+      - TRAEFIK_API_INSECURE=${TRAEFIK_DASHBOARD_ENABLED:-false}
+      # Let's Encrypt ACME email (only used when TRAEFIK_CERT_RESOLVER=letsencrypt)
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ACME_EMAIL:-admin@example.com}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only Docker socket for service discovery
+      - ./traefik/traefik.yml:/traefik.yml:ro        # Static Traefik configuration
+      - letsencrypt:/letsencrypt                     # Persisted TLS certificates / ACME state
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.pangolin.service=proxy"
+
+  # ============================================
   # FLAMENCO MANAGER - Render Job Orchestration
   # ============================================
   flamenco-manager:
@@ -77,7 +113,10 @@ services:
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-pangolin}
       - POSTGRES_USER=${POSTGRES_USER:-pangolin}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pangolin}
+      # Password is read from the Docker secret file (required – create secrets/postgres_password.txt first).
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -93,14 +132,15 @@ services:
   # ============================================
   # PANGOLIN BACKEND - Submission API
   # ============================================
+  # Exposed via Traefik on https://${PANGOLIN_DOMAIN}
   pangolin-backend:
     build:
       context: ./pangolin-backend
       dockerfile: Dockerfile
     container_name: pangolin-backend
     restart: unless-stopped
-    ports:
-      - "${WEB_PORT}:8080"
+    expose:
+      - "8080"
     volumes:
       - flamenco-shared:/shared
     networks:
@@ -111,7 +151,12 @@ services:
       - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false} # Don't forget to edit this in the .env, it's set to false by default
       - POSTGRES_DB=${POSTGRES_DB:-pangolin}
       - POSTGRES_USER=${POSTGRES_USER:-pangolin}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pangolin}
+      # DB password is read from the Docker secret file by SecretsEnvironmentPostProcessor.
+      # If the secret file is absent, Spring falls back to ${POSTGRES_PASSWORD:pangolin}
+      # from application.properties (useful when running the backend outside of Docker).
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
     depends_on:
       flamenco-manager:
         condition: service_healthy
@@ -119,6 +164,13 @@ services:
         condition: service_healthy
     labels:
       - "com.pangolin.service=backend"
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.http.routers.pangolin.rule=Host(`${PANGOLIN_DOMAIN:-pangolin.localhost}`)"
+      - "traefik.http.routers.pangolin.entrypoints=websecure"
+      - "traefik.http.routers.pangolin.tls=true"
+      - "traefik.http.routers.pangolin.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-}"
+      - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
 
   # ============================================
   # PROMETHEUS - Metrics Collection
@@ -151,19 +203,23 @@ services:
   # ============================================
   # GRAFANA - Visualization & Dashboards
   # ============================================
+  # Exposed via Traefik on https://${GRAFANA_DOMAIN}
   grafana:
     image: grafana/grafana:12.3.4
     container_name: pangolin-grafana
     restart: unless-stopped
-    ports:
-      - "${GRAFANA_PORT}:3000"
+    expose:
+      - "3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}         # Credentials here are editable in the .env
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin} # I recommend a different solution if you plan to expose this outside of a VLAN
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      # Admin password is read from the Docker secret file (required – create secrets/grafana_admin_password.txt first).
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
       - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE}
       - GF_SECURITY_ALLOW_EMBEDDING=${GF_SECURITY_ALLOW_EMBEDDING}
+    secrets:
+      - grafana_admin_password
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -180,6 +236,13 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=monitoring"
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`${GRAFANA_DOMAIN:-grafana.localhost}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-}"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   # ============================================
   # cADVISOR - Container Metrics
@@ -299,3 +362,17 @@ volumes:
 
   # Database data
   postgres-data:
+
+  # TLS certificates and ACME state (Let's Encrypt)
+  letsencrypt:
+
+# ============================================
+# SECRETS
+# ============================================
+# Secret files must be created before starting the stack.
+# See secrets/README.md for instructions.
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt
