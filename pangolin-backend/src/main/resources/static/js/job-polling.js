@@ -1,8 +1,8 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Job Polling
- * Polls the output directory status endpoint to detect when rendered files
- * are ready on disk. Fires pangolin:renderComplete for the notification system.
- * UI progress is handled by active-sessions.js via the Flamenco API.
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ *  Pangolin Job Polling
+ *  Polls the output directory status endpoint to detect when rendered files
+ *  are ready on disk. Fires pangolin:renderComplete for the notification system.
+ *  UI progress is handled by active-sessions.js via the Flamenco API.
  */
 
 const jobPolling = (() => {
@@ -39,7 +39,7 @@ const jobPolling = (() => {
         if (!currentJobId) return;
 
         try {
-            const res = await fetch(`/status/${currentJobId}`);
+            const res = await fetch(`/api/render/status/${currentJobId}`);
             const data = await res.json();
 
             if (data.ready && data.fileCount >= totalFrames && totalFrames > 0) {

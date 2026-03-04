@@ -1,6 +1,6 @@
-/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- * Pangolin Render Form Handler
- * Handles form submission, validation, and file size checks
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ *  Pangolin Render Form Handler
+ *  Handles form submission, validation, and file size checks
  */
 
 const renderForm = (() => {
@@ -330,7 +330,7 @@ const renderForm = (() => {
         const formData = new FormData(form);
         
         try {
-            const response = await fetch('/submit', { 
+            const response = await fetch('/api/render/submit', { 
                 method: 'POST', 
                 body: formData 
             });
