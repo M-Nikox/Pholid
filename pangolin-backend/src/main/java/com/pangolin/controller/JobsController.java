@@ -6,6 +6,7 @@
 
 package com.pangolin.controller;
 
+import com.pangolin.audit.AuditLogService;
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.dto.JobSetStatusRequest;
 import com.pangolin.dto.TaskLogMeta;
@@ -39,10 +40,13 @@ public class JobsController {
 
     private final FlamencoClient flamencoClient;
     private final RestClient restClient;
+    private final AuditLogService auditLogService;
 
-    public JobsController(FlamencoClient flamencoClient, RestClient restClient) {
+    public JobsController(FlamencoClient flamencoClient, RestClient restClient,
+                          AuditLogService auditLogService) {
         this.flamencoClient = flamencoClient;
         this.restClient     = restClient;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping("/active")
@@ -73,6 +77,7 @@ public class JobsController {
             flamencoClient.setJobStatus(jobId,
                     new JobSetStatusRequest("cancel-requested", "Cancelled by user via Pangolin"));
             log.info("Cancel requested for job {}", jobId);
+            auditLogService.logAction("JOB_CANCELLED", "JOB", jobId, null);
             return ResponseEntity.ok(Map.of("message", "Cancel requested", "jobId", jobId));
 
         } catch (HttpClientErrorException e) {
