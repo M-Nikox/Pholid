@@ -9,7 +9,7 @@ services:
   #   letsencrypt – set TRAEFIK_CERT_RESOLVER=letsencrypt and ACME_EMAIL
   #     in .env; Traefik uses ACME (HTTP-01 challenge on port 80).
   traefik:
-    image: traefik:v3.4.1
+    image: traefik:v3.6.9
     container_name: pangolin-traefik
     restart: unless-stopped
     ports:
@@ -107,7 +107,7 @@ services:
   # POSTGRES - Persistent Database
   # ============================================
   postgres:
-    image: postgres:17
+    image: postgres:18.3
     container_name: pangolin-postgres
     restart: unless-stopped
     environment:
@@ -176,7 +176,7 @@ services:
   # REDIS - In-Memory Store (required by Authentik)
   # ============================================
   redis:
-    image: redis:7-alpine
+    image: redis:8.6.1
     container_name: pangolin-redis
     restart: unless-stopped
     command: --save 60 1 --loglevel warning
@@ -199,7 +199,7 @@ services:
   # After first start: visit https://${AUTHENTIK_DOMAIN}/if/flow/initial-setup/
   # to create the admin account and configure OIDC applications.
   authentik-server:
-    image: ghcr.io/goauthentik/server:2024.12
+    image: ghcr.io/goauthentik/server:2026.2
     container_name: pangolin-authentik-server
     command: server
     restart: unless-stopped
@@ -236,7 +236,7 @@ services:
       - "traefik.http.services.authentik.loadbalancer.server.port=9000"
 
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2024.12
+    image: ghcr.io/goauthentik/server:2026.2
     container_name: pangolin-authentik-worker
     command: worker
     restart: unless-stopped
