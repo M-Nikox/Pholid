@@ -1,5 +1,5 @@
-/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- *  Pangolin Render Manager - Main Stylesheet 
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ * Pangolin Render Manager - Main Stylesheet 
  */
 
 :root {
@@ -205,4 +205,77 @@ header button.glass-card:active {
 /* Guide modal - pangolin-cream in dark mode */
 [data-theme="dark"] .pangolin-logo-guide {
     color: #FAF3E1;
+}
+
+
+
+/* ===== CUSTOM DROPDOWN ===== */
+.pangolin-dropdown {
+    position: relative;
+}
+
+.pangolin-dropdown-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.pangolin-dropdown-arrow {
+    width: 10px;
+    height: 6px;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: transform 0.2s ease;
+    margin-left: 8px;
+}
+
+.pangolin-dropdown.open .pangolin-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.pangolin-dropdown-list {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: -16px;
+    right: -16px;
+    z-index: 50;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+.pangolin-dropdown.open .pangolin-dropdown-list {
+    display: block;
+}
+
+.pangolin-dropdown-option {
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.pangolin-dropdown-option:hover {
+    background: var(--bg-secondary);
+}
+
+.pangolin-dropdown-option.selected {
+    color: var(--pangolin-orange);
 }
