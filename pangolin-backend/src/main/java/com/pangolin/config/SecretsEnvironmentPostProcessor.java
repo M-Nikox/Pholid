@@ -26,11 +26,19 @@ import java.util.Map;
  * {@code /run/secrets/postgres_password}), its contents override
  * {@code spring.datasource.password}. If the env var is absent the normal
  * {@code POSTGRES_PASSWORD} fallback in {@code application.properties} is used.
+ *
+ * <p>When {@code OIDC_CLIENT_SECRET_FILE} is set (e.g.
+ * {@code /run/secrets/oidc_client_secret}), its contents are exposed as
+ * {@code OIDC_CLIENT_SECRET}, which is referenced by the OAuth2 client
+ * registration properties.
  */
 public class SecretsEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
     private static final String POSTGRES_PASSWORD_FILE_ENV = "POSTGRES_PASSWORD_FILE";
     private static final String DATASOURCE_PASSWORD_PROPERTY = "spring.datasource.password";
+
+    private static final String OIDC_SECRET_FILE_ENV = "OIDC_CLIENT_SECRET_FILE";
+    private static final String OIDC_SECRET_PROPERTY = "OIDC_CLIENT_SECRET";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment,
@@ -40,6 +48,11 @@ public class SecretsEnvironmentPostProcessor implements EnvironmentPostProcessor
         String postgresPasswordFile = environment.getProperty(POSTGRES_PASSWORD_FILE_ENV);
         if (postgresPasswordFile != null) {
             loadSecret(Path.of(postgresPasswordFile), DATASOURCE_PASSWORD_PROPERTY, secretProperties);
+        }
+
+        String oidcSecretFile = environment.getProperty(OIDC_SECRET_FILE_ENV);
+        if (oidcSecretFile != null) {
+            loadSecret(Path.of(oidcSecretFile), OIDC_SECRET_PROPERTY, secretProperties);
         }
 
         if (!secretProperties.isEmpty()) {

@@ -6,6 +6,7 @@
 
 package com.pangolin.controller;
 
+import com.pangolin.audit.AuditLogService;
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.config.PangolinProperties;
 import com.pangolin.exception.DeleteNotEnabledException;
@@ -41,15 +42,18 @@ public class RenderController {
     private final FileStorageService storageService;
     private final FlamencoClient flamencoClient;
     private final PangolinProperties props;
+    private final AuditLogService auditLogService;
 
     public RenderController(JobSubmissionService submissionService,
                             FileStorageService storageService,
                             FlamencoClient flamencoClient,
-                            PangolinProperties props) {
+                            PangolinProperties props,
+                            AuditLogService auditLogService) {
         this.submissionService = submissionService;
         this.storageService    = storageService;
         this.flamencoClient    = flamencoClient;
         this.props             = props;
+        this.auditLogService   = auditLogService;
     }
 
     @PostMapping("/submit")
@@ -62,6 +66,7 @@ public class RenderController {
             throws IOException {
 
         String jobId = submissionService.submit(file, projectName, frames, priority, computeMode);
+        auditLogService.logAction("JOB_SUBMITTED", "JOB", jobId, "project=" + projectName);
         return ResponseEntity.ok(Map.of(
                 "message", "Job submitted successfully!",
                 "jobId", jobId
@@ -104,6 +109,8 @@ public class RenderController {
 
         flamencoClient.deleteJob(flamencoJobId);
         log.info("Job {} deleted from Flamenco", flamencoJobId);
+        auditLogService.logAction("JOB_DELETED", "JOB", pangolinJobId,
+                "flamencoJobId=" + flamencoJobId);
 
         if (Files.exists(jobDir)) {
             try {

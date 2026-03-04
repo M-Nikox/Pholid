@@ -6,6 +6,7 @@
 
 package com.pangolin.controller;
 
+import com.pangolin.audit.AuditLogService;
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.config.PangolinProperties;
 import com.pangolin.service.FileStorageService;
@@ -41,6 +42,7 @@ class RenderControllerDeleteTest {
     @MockitoBean FileStorageService storageService;
     @MockitoBean JobSubmissionService submissionService;
     @MockitoBean PangolinProperties props;
+    @MockitoBean AuditLogService auditLogService;
 
     // ── Delete not enabled ──────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@
 
 package com.pangolin.controller;
 
+import com.pangolin.audit.AuditLogService;
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.exception.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +33,8 @@ class JobsControllerValidationTest {
         flamencoClient = mock(FlamencoClient.class);
         when(flamencoClient.getJobs(anyString(), anyInt(), anyInt()))
                 .thenReturn(java.util.Map.of());
-        controller = new JobsController(flamencoClient, mock(RestClient.class));
+        controller = new JobsController(flamencoClient, mock(RestClient.class),
+                mock(AuditLogService.class));
     }
 
     // ── Limit ───────────────────────────────────────────────────────────────

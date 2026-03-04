@@ -119,6 +119,7 @@ services:
       - postgres_password
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init-authentik-db.sh:/docker-entrypoint-initdb.d/init-authentik-db.sh:ro
     networks:
       - pangolin-network
     healthcheck:
@@ -155,15 +156,14 @@ services:
       # If the secret file is absent, Spring falls back to ${POSTGRES_PASSWORD:pangolin}
       # from application.properties (useful when running the backend outside of Docker).
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      # OIDC / Authentik (only used when PANGOLIN_AUTH_ENABLED=true)
+      - PANGOLIN_AUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-pangolin}
+      - OIDC_CLIENT_SECRET_FILE=/run/secrets/oidc_client_secret
+      - OIDC_ISSUER_URI=${OIDC_ISSUER_URI:-https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/pangolin/}
     secrets:
       - postgres_password
-    depends_on:
-      flamenco-manager:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    labels:
-      - "com.pangolin.service=backend"
+      - oidc_client_secret
       # Traefik routing
       - "traefik.enable=true"
       - "traefik.http.routers.pangolin.rule=Host(`${PANGOLIN_DOMAIN:-pangolin.localhost}`)"
@@ -171,6 +171,91 @@ services:
       - "traefik.http.routers.pangolin.tls=true"
       - "traefik.http.routers.pangolin.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-}"
       - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
+
+  # ============================================
+  # REDIS - In-Memory Store (required by Authentik)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: pangolin-redis
+    restart: unless-stopped
+    command: --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.pangolin.service=authentik"
+
+  # ============================================
+  # AUTHENTIK - Identity Provider (OIDC / SSO)
+  # ============================================
+  # Exposed via Traefik on https://${AUTHENTIK_DOMAIN}
+  # After first start: visit https://${AUTHENTIK_DOMAIN}/if/flow/initial-setup/
+  # to create the admin account and configure OIDC applications.
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.12
+    container_name: pangolin-authentik-server
+    command: server
+    restart: unless-stopped
+    expose:
+      - "9000"
+      - "9443"
+    environment:
+      - AUTHENTIK_REDIS__HOST=redis
+      - AUTHENTIK_POSTGRESQL__HOST=postgres
+      - AUTHENTIK_POSTGRESQL__USER=${POSTGRES_USER:-pangolin}
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${POSTGRES_PASSWORD}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+    networks:
+      - pangolin-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.pangolin.service=authentik"
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=Host(`${AUTHENTIK_DOMAIN:-authentik.localhost}`)"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
+      - "traefik.http.routers.authentik.tls=true"
+      - "traefik.http.routers.authentik.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-}"
+      - "traefik.http.services.authentik.loadbalancer.server.port=9000"
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.12
+    container_name: pangolin-authentik-worker
+    command: worker
+    restart: unless-stopped
+    environment:
+      - AUTHENTIK_REDIS__HOST=redis
+      - AUTHENTIK_POSTGRESQL__HOST=postgres
+      - AUTHENTIK_POSTGRESQL__USER=${POSTGRES_USER:-pangolin}
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${POSTGRES_PASSWORD}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+    networks:
+      - pangolin-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "com.pangolin.service=authentik"
 
   # ============================================
   # PROMETHEUS - Metrics Collection
@@ -218,8 +303,19 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
       - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE}
       - GF_SECURITY_ALLOW_EMBEDDING=${GF_SECURITY_ALLOW_EMBEDDING}
+      # OIDC via Authentik (only effective when GF_AUTH_GENERIC_OAUTH_ENABLED=true)
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
+      - GF_AUTH_GENERIC_OAUTH_NAME=Authentik
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GRAFANA_OIDC_CLIENT_ID:-grafana}
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET_FILE=/run/secrets/grafana_oidc_client_secret
+      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/authorize/
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/token/
+      - GF_AUTH_GENERIC_OAUTH_API_URL=https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/userinfo/
+      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN:-grafana.localhost}
     secrets:
       - grafana_admin_password
+      - grafana_oidc_client_secret
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -363,6 +459,9 @@ volumes:
   # Database data
   postgres-data:
 
+  # In-memory store for Authentik
+  redis-data:
+
   # TLS certificates and ACME state (Let's Encrypt)
   letsencrypt:
 
@@ -376,3 +475,7 @@ secrets:
     file: ./secrets/postgres_password.txt
   grafana_admin_password:
     file: ./secrets/grafana_admin_password.txt
+  oidc_client_secret:
+    file: ./secrets/oidc_client_secret.txt
+  grafana_oidc_client_secret:
+    file: ./secrets/grafana_oidc_client_secret.txt
