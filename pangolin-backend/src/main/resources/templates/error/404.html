@@ -1,0 +1,54 @@
+<!-- Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Pangolin Render Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/pangolin.css">
+    <link rel="icon" type="image/svg+xml" href="/svg/pangolin.svg">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pangolin-cream': '#FAF3E1',
+                        'pangolin-beige': '#F5E7C6',
+                        'pangolin-orange': '#FA8112',
+                        'pangolin-black': '#222222',
+                        'pangolin-purple-dark': '#1C1328',
+                        'pangolin-purple-deep': '#0F0916',
+                    },
+                    fontFamily: { 'outfit': ['Outfit', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <script src="/js/theme.js" defer></script>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex items-center justify-center">
+    <div class="max-w-lg w-full text-center space-y-8">
+        <div class="flex justify-center">
+            <div class="w-16 h-16 bg-pangolin-orange rounded-2xl flex items-center justify-center orange-glow">
+                <div class="pangolin-logo-header w-10 h-10"></div>
+            </div>
+        </div>
+        <div class="glass-card p-10 space-y-6">
+            <div class="text-8xl font-black font-outfit text-pangolin-orange opacity-90">404</div>
+            <div class="space-y-2">
+                <h1 class="text-2xl font-black font-outfit uppercase tracking-tight">Page Not Found</h1>
+                <p class="opacity-50 text-sm">The page you were looking for doesn't exist or has been moved.</p>
+                <p class="opacity-30 text-xs font-mono" th:if="${path}" th:text="${path}"></p>
+            </div>
+            <a href="/" class="inline-block w-full py-4 bg-pangolin-orange text-white rounded-2xl font-black text-sm tracking-[0.1em] hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-orange-500/20 uppercase">
+                Back to Render Manager
+            </a>
+        </div>
+        <p class="text-[10px] font-black tracking-[0.3em] uppercase opacity-20">Pangolin © 2026</p>
+    </div>
+</body>
+</html>
