@@ -1,3 +1,6 @@
+# Copyright © 2026 Pangolin
+# SPDX-License-Identifier: Apache-2.0
+
 FROM python:3.14.2-slim
 
 WORKDIR /app
