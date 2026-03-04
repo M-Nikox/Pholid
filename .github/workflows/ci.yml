@@ -25,3 +25,11 @@ jobs:
       - name: Run tests
         working-directory: pangolin-backend
         run: mvn test -B
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Test Results
+          path: pangolin-backend/target/surefire-reports/*.xml
+          reporter: java-junit
