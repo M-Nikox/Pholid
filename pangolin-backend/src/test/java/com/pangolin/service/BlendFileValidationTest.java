@@ -45,7 +45,9 @@ class BlendFileValidationTest {
                 new PangolinProperties.File(512),
                 new PangolinProperties.Http(10000, 30000),
                 new PangolinProperties.Delete(false),
-                new PangolinProperties.Auth(false, "pangolin-admins")
+                new PangolinProperties.Auth(false, "pangolin-admins", "admin"),
+                null, null,
+                new PangolinProperties.Quota(100, 1000)
         );
         service = new JobSubmissionService(
                 mock(FlamencoClient.class),

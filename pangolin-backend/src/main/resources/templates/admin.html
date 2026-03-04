@@ -1,0 +1,174 @@
+<!-- Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pangolin — Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/pangolin.css">
+    <link rel="icon" type="image/svg+xml" href="/svg/pangolin.svg">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pangolin-cream': '#FAF3E1',
+                        'pangolin-beige': '#F5E7C6',
+                        'pangolin-orange': '#FA8112',
+                        'pangolin-black': '#222222',
+                        'pangolin-purple-dark': '#1C1328',
+                        'pangolin-purple-deep': '#0F0916',
+                    },
+                    fontFamily: { 'outfit': ['Outfit', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="p-4 md:p-8">
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-pangolin-orange rounded-2xl flex items-center justify-center orange-glow">
+                <div class="pangolin-logo-header w-8 h-8"></div>
+            </div>
+            <div>
+                <h1 class="text-3xl font-black tracking-tight font-outfit uppercase">Pangolin <span class="font-light opacity-70 text-2xl">Admin</span></h1>
+                <p class="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">Administration Panel</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-bold opacity-50" th:text="'Logged in as: ' + ${currentUser}">User</span>
+            <a href="/" class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pangolin-orange transition-all">← Back to Dashboard</a>
+            <a href="/preferences" class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pangolin-orange transition-all">⚙ Preferences</a>
+        </div>
+    </header>
+
+    <!-- All Jobs -->
+    <section class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold font-outfit uppercase tracking-widest">All Jobs</h2>
+            <span class="text-xs font-bold opacity-40 uppercase tracking-widest" th:text="${#lists.size(jobs)} + ' total'">0 total</span>
+        </div>
+
+        <div th:if="${#lists.isEmpty(jobs)}" class="text-center py-8 opacity-30 italic text-sm">No jobs found.</div>
+
+        <div th:unless="${#lists.isEmpty(jobs)}" class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="border-b" style="border-color: rgba(255,255,255,0.08);">
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Job ID</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Project</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Submitted By</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Status</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Progress</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Frames</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Submitted At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="job : ${jobs}"
+                        class="border-b hover:bg-white/5 transition-colors"
+                        style="border-color: rgba(255,255,255,0.04);">
+                        <td class="py-3 px-2 font-mono opacity-70" th:text="${job.pangolinJobId}">-</td>
+                        <td class="py-3 px-2 font-semibold" th:text="${job.projectName}">-</td>
+                        <td class="py-3 px-2 opacity-70" th:text="${job.submittedBy}">-</td>
+                        <td class="py-3 px-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest"
+                                  th:classappend="${job.status == 'completed'} ? 'bg-green-500/20 text-green-400' :
+                                                 (${job.status == 'failed'} ? 'bg-red-500/20 text-red-400' :
+                                                 (${job.status == 'active'} ? 'bg-blue-500/20 text-blue-400' :
+                                                 'bg-white/10 text-white/60'))"
+                                  th:text="${job.status}">-</span>
+                        </td>
+                        <td class="py-3 px-2">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden" style="min-width: 60px;">
+                                    <div class="h-full bg-pangolin-orange rounded-full transition-all"
+                                         th:style="'width: ' + ${job.progress} + '%'"></div>
+                                </div>
+                                <span class="text-[10px] opacity-60 font-bold" th:text="${job.progress} + '%'">0%</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-2 opacity-70" th:text="${job.frames}">-</td>
+                        <td class="py-3 px-2 opacity-50 font-mono text-[10px]" th:text="${#temporals.format(job.submittedAt, 'yyyy-MM-dd HH:mm')}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Audit Log -->
+    <section class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold font-outfit uppercase tracking-widest">Audit Log</h2>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold opacity-40 uppercase tracking-widest"
+                      th:text="${auditLogs.totalElements} + ' entries'">0 entries</span>
+            </div>
+        </div>
+
+        <div th:if="${auditLogs.isEmpty()}" class="text-center py-8 opacity-30 italic text-sm">No audit log entries.</div>
+
+        <div th:unless="${auditLogs.isEmpty()}" class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="border-b" style="border-color: rgba(255,255,255,0.08);">
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Timestamp</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Action</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Resource</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Resource ID</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">User</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="entry : ${auditLogs}"
+                        class="border-b hover:bg-white/5 transition-colors"
+                        style="border-color: rgba(255,255,255,0.04);">
+                        <td class="py-3 px-2 font-mono opacity-50 text-[10px]"
+                            th:text="${#temporals.format(entry.timestamp, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                        <td class="py-3 px-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-pangolin-orange/20 text-pangolin-orange"
+                                  th:text="${entry.action}">-</span>
+                        </td>
+                        <td class="py-3 px-2 opacity-70" th:text="${entry.resourceType}">-</td>
+                        <td class="py-3 px-2 font-mono opacity-60" th:text="${entry.resourceId}">-</td>
+                        <td class="py-3 px-2 opacity-70" th:text="${entry.username}">-</td>
+                        <td class="py-3 px-2 opacity-50" th:text="${entry.details}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between mt-4" th:if="${auditLogs.totalPages > 1}">
+            <a th:if="${auditPage > 0}"
+               th:href="@{/admin(auditPage=${auditPage - 1}, auditSize=${auditSize})}"
+               class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pangolin-orange transition-all">
+                ← Previous
+            </a>
+            <span class="text-xs opacity-40 font-bold uppercase tracking-widest"
+                  th:text="'Page ' + (${auditPage} + 1) + ' of ' + ${auditLogs.totalPages}">Page 1</span>
+            <a th:if="${auditPage + 1 < auditLogs.totalPages}"
+               th:href="@{/admin(auditPage=${auditPage + 1}, auditSize=${auditSize})}"
+               class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pangolin-orange transition-all">
+                Next →
+            </a>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 opacity-20 text-[10px] font-black tracking-[0.4em] uppercase">
+        <a href="https://github.com/M-Nikox/Pangolin">Pangolin © 2026</a> &bull; Admin Panel
+    </footer>
+</div>
+
+<script src="/js/theme.js"></script>
+</body>
+</html>

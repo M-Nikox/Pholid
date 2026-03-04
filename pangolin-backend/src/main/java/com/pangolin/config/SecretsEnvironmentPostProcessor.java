@@ -40,6 +40,9 @@ public class SecretsEnvironmentPostProcessor implements EnvironmentPostProcessor
     private static final String OIDC_SECRET_FILE_ENV = "OIDC_CLIENT_SECRET_FILE";
     private static final String OIDC_SECRET_PROPERTY = "OIDC_CLIENT_SECRET";
 
+    private static final String SMTP_PASSWORD_FILE_ENV = "SMTP_PASSWORD_FILE";
+    private static final String SMTP_PASSWORD_PROPERTY = "SMTP_PASSWORD";
+
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment,
                                        SpringApplication application) {
@@ -53,6 +56,11 @@ public class SecretsEnvironmentPostProcessor implements EnvironmentPostProcessor
         String oidcSecretFile = environment.getProperty(OIDC_SECRET_FILE_ENV);
         if (oidcSecretFile != null) {
             loadSecret(Path.of(oidcSecretFile), OIDC_SECRET_PROPERTY, secretProperties);
+        }
+
+        String smtpPasswordFile = environment.getProperty(SMTP_PASSWORD_FILE_ENV);
+        if (smtpPasswordFile != null) {
+            loadSecret(Path.of(smtpPasswordFile), SMTP_PASSWORD_PROPERTY, secretProperties);
         }
 
         if (!secretProperties.isEmpty()) {

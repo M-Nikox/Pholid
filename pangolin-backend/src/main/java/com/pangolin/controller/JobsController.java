@@ -11,6 +11,8 @@ import com.pangolin.client.FlamencoClient;
 import com.pangolin.dto.JobSetStatusRequest;
 import com.pangolin.dto.TaskLogMeta;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.job.Job;
+import com.pangolin.job.JobRepository;
 import com.pangolin.service.UserContextService;
 import com.pangolin.validation.IdValidator;
 import org.slf4j.Logger;
@@ -43,14 +45,17 @@ public class JobsController {
     private final RestClient restClient;
     private final AuditLogService auditLogService;
     private final UserContextService userContextService;
+    private final JobRepository jobRepository;
 
     public JobsController(FlamencoClient flamencoClient, RestClient restClient,
                           AuditLogService auditLogService,
-                          UserContextService userContextService) {
+                          UserContextService userContextService,
+                          JobRepository jobRepository) {
         this.flamencoClient     = flamencoClient;
         this.restClient         = restClient;
         this.auditLogService    = auditLogService;
         this.userContextService = userContextService;
+        this.jobRepository      = jobRepository;
     }
 
     @GetMapping("/active")
@@ -159,6 +164,24 @@ public class JobsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to fetch log: " + e.getMessage());
         }
+    }
+
+    /**
+     * Returns the stored progress (0-100) for a job identified by its Flamenco job ID.
+     * The progress is updated by the {@link com.pangolin.service.JobProgressService} scheduler.
+     */
+    @GetMapping("/{jobId}/progress")
+    public ResponseEntity<Map<String, Object>> getJobProgress(@PathVariable String jobId) {
+        if (!IdValidator.isValidFlamencoId(jobId)) throw new ValidationException("Invalid job ID format");
+
+        return jobRepository.findByFlamencoJobId(jobId)
+                .map(job -> ResponseEntity.ok(Map.<String, Object>of(
+                        "jobId",    jobId,
+                        "progress", job.getProgress(),
+                        "status",   job.getStatus() != null ? job.getStatus() : ""
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Job not found", "jobId", jobId)));
     }
 
     private int jobCount(Map<String, Object> body) {

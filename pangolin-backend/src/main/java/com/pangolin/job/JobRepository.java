@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -25,4 +27,19 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     boolean existsByFlamencoJobIdAndSubmittedBy(String flamencoJobId, String submittedBy);
 
     boolean existsByPangolinJobIdAndSubmittedBy(String pangolinJobId, String submittedBy);
+
+    Optional<Job> findByFlamencoJobId(String flamencoJobId);
+
+    /** Returns active jobs (non-terminal status) for quota checking. */
+    @Query("SELECT j FROM Job j WHERE j.submittedBy = :submittedBy AND j.status NOT IN ('completed', 'failed', 'canceled')")
+    List<Job> findActiveJobsBySubmittedBy(@Param("submittedBy") String submittedBy);
+
+    /** Counts jobs submitted by a user since a given time (for rate limiting). */
+    @Query("SELECT COUNT(j) FROM Job j WHERE j.submittedBy = :submittedBy AND j.submittedAt >= :since")
+    long countJobsBySubmittedBySince(@Param("submittedBy") String submittedBy,
+                                     @Param("since") java.time.OffsetDateTime since);
+
+    /** Returns all jobs with non-terminal status (for progress polling). */
+    @Query("SELECT j FROM Job j WHERE j.status NOT IN ('completed', 'failed', 'canceled') AND j.flamencoJobId IS NOT NULL")
+    List<Job> findActiveJobsWithFlamencoId();
 }

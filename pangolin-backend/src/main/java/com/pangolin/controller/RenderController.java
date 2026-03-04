@@ -14,6 +14,7 @@ import com.pangolin.exception.JobConflictException;
 import com.pangolin.exception.ValidationException;
 import com.pangolin.service.FileStorageService;
 import com.pangolin.service.JobSubmissionService;
+import com.pangolin.service.QuotaService;
 import com.pangolin.service.UserContextService;
 import com.pangolin.validation.IdValidator;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,19 +46,22 @@ public class RenderController {
     private final PangolinProperties props;
     private final AuditLogService auditLogService;
     private final UserContextService userContextService;
+    private final QuotaService quotaService;
 
     public RenderController(JobSubmissionService submissionService,
                             FileStorageService storageService,
                             FlamencoClient flamencoClient,
                             PangolinProperties props,
                             AuditLogService auditLogService,
-                            UserContextService userContextService) {
+                            UserContextService userContextService,
+                            QuotaService quotaService) {
         this.submissionService  = submissionService;
         this.storageService     = storageService;
         this.flamencoClient     = flamencoClient;
         this.props              = props;
         this.auditLogService    = auditLogService;
         this.userContextService = userContextService;
+        this.quotaService       = quotaService;
     }
 
     @PostMapping("/submit")
@@ -70,6 +74,7 @@ public class RenderController {
             throws IOException {
 
         String submittedBy = userContextService.getCurrentUsername();
+        quotaService.checkQuota(submittedBy);
         String jobId = submissionService.submit(file, projectName, frames, priority, computeMode, submittedBy);
         auditLogService.logAction("JOB_SUBMITTED", "JOB", jobId, "project=" + projectName);
         return ResponseEntity.ok(Map.of(

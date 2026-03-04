@@ -6,6 +6,7 @@
 
 package com.pangolin.exception;
 
+import com.pangolin.service.QuotaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(JobConflictException.class)
     public ResponseEntity<ErrorResponse> handleJobConflict(JobConflictException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(QuotaService.QuotaExceededException.class)
+    public ResponseEntity<ErrorResponse> handleQuotaExceeded(QuotaService.QuotaExceededException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(new ErrorResponse(e.getMessage()));
     }
 
     @ExceptionHandler(HttpClientErrorException.NotFound.class)
