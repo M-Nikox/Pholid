@@ -53,6 +53,9 @@ public class Job {
     @Column(name = "pangolin_job_id", unique = true, length = 32)
     private String pangolinJobId;
 
+    @Column(name = "progress", nullable = false)
+    private int progress = 0;
+
     public UUID getId() { return id; }
 
     public String getName() { return name; }
@@ -84,4 +87,7 @@ public class Job {
 
     public String getPangolinJobId() { return pangolinJobId; }
     public void setPangolinJobId(String pangolinJobId) { this.pangolinJobId = pangolinJobId; }
+
+    public int getProgress() { return progress; }
+    public void setProgress(int progress) { this.progress = progress; }
 }

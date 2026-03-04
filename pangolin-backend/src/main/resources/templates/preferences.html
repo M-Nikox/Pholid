@@ -1,0 +1,155 @@
+<!-- Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pangolin — Notification Preferences</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/pangolin.css">
+    <link rel="icon" type="image/svg+xml" href="/svg/pangolin.svg">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pangolin-cream': '#FAF3E1',
+                        'pangolin-beige': '#F5E7C6',
+                        'pangolin-orange': '#FA8112',
+                        'pangolin-black': '#222222',
+                        'pangolin-purple-dark': '#1C1328',
+                        'pangolin-purple-deep': '#0F0916',
+                    },
+                    fontFamily: { 'outfit': ['Outfit', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="p-4 md:p-8">
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-pangolin-orange rounded-2xl flex items-center justify-center orange-glow">
+                <div class="pangolin-logo-header w-8 h-8"></div>
+            </div>
+            <div>
+                <h1 class="text-3xl font-black tracking-tight font-outfit uppercase">Pangolin <span class="font-light opacity-70 text-2xl">Preferences</span></h1>
+                <p class="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">Notification Settings</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-bold opacity-50" th:text="'User: ' + ${currentUser}">User</span>
+            <a href="/" class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pangolin-orange transition-all">← Dashboard</a>
+            <a th:if="${isAdmin}" href="/admin" class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pangolin-orange transition-all">🛡 Admin</a>
+        </div>
+    </header>
+
+    <!-- Saved banner -->
+    <div th:if="${saved}" class="p-4 glass-card border border-green-500/40 text-green-400 text-sm font-bold rounded-2xl">
+        ✓ Preferences saved successfully.
+    </div>
+
+    <!-- Preferences Form -->
+    <section class="glass-card p-6 md:p-8">
+        <form th:action="@{/preferences}" th:object="${prefs}" method="post" class="space-y-8">
+
+            <!-- Email Notifications -->
+            <div>
+                <h2 class="text-lg font-bold font-outfit uppercase tracking-widest mb-4 flex items-center gap-2">
+                    📧 Email Notifications
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Enable email notifications</p>
+                            <p class="text-xs opacity-40 mt-0.5">Receive an email when your renders complete or fail</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{emailEnabled}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pangolin-orange"></div>
+                        </label>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold opacity-50 uppercase tracking-widest">Email Address</label>
+                        <input type="email" th:field="*{emailAddress}"
+                               placeholder="you@example.com"
+                               class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-pangolin-orange transition-all">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Triggers -->
+            <div>
+                <h2 class="text-lg font-bold font-outfit uppercase tracking-widest mb-4">Notify When</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Job completed</p>
+                            <p class="text-xs opacity-40 mt-0.5">Notify when a render job finishes successfully</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{notifyOnComplete}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pangolin-orange"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Job failed</p>
+                            <p class="text-xs opacity-40 mt-0.5">Notify when a render job fails</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{notifyOnFailure}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pangolin-orange"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Webhook Notifications -->
+            <div>
+                <h2 class="text-lg font-bold font-outfit uppercase tracking-widest mb-4 flex items-center gap-2">
+                    🔗 Webhook Notifications
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Enable webhook</p>
+                            <p class="text-xs opacity-40 mt-0.5">POST a JSON payload to your URL when jobs complete or fail</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{webhookEnabled}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pangolin-orange"></div>
+                        </label>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold opacity-50 uppercase tracking-widest">Webhook URL</label>
+                        <input type="url" th:field="*{webhookUrl}"
+                               placeholder="https://hooks.example.com/notify"
+                               class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-pangolin-orange transition-all">
+                        <p class="text-[10px] opacity-40">Payload includes: jobId, status, project, submittedBy, completedAt</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save button -->
+            <button type="submit"
+                    class="w-full py-4 bg-pangolin-orange text-white rounded-2xl font-black text-sm tracking-[0.1em] hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-orange-500/20 uppercase">
+                Save Preferences
+            </button>
+        </form>
+    </section>
+
+    <footer class="text-center py-8 opacity-20 text-[10px] font-black tracking-[0.4em] uppercase">
+        <a href="https://github.com/M-Nikox/Pangolin">Pangolin © 2026</a>
+    </footer>
+</div>
+
+<script src="/js/theme.js"></script>
+</body>
+</html>

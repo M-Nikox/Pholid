@@ -1,6 +1,6 @@
 <!-- Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0 -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -56,6 +56,17 @@
                 <button id="helpBtn" class="p-3 glass-card hover:scale-105 transition-all" title="How to use">
                     <span>❓</span>
                 </button>
+
+                <!-- Preferences link -->
+                <a href="/preferences" class="p-3 glass-card hover:scale-105 transition-all" title="Notification Preferences">
+                    <span>⚙️</span>
+                </a>
+
+                <!-- Admin panel link (only shown to admins) -->
+                <a th:if="${isAdmin}" href="/admin"
+                   class="p-3 glass-card hover:scale-105 transition-all" title="Admin Panel">
+                    <span>🛡</span>
+                </a>
 
                 <!-- Theme selector dropdown -->
                 <div class="theme-selector-dropdown">

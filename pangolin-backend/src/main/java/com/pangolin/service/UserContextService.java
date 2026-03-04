@@ -83,6 +83,15 @@ public class UserContextService {
                 return true;
             }
         }
+        // Fallback: check configured admin role name
+        String configuredRole = props.auth().adminRole();
+        if (configuredRole != null && !configuredRole.isBlank()) {
+            if (auth.getAuthorities().stream()
+                    .anyMatch(a -> ("ROLE_" + configuredRole).equals(a.getAuthority())
+                            || configuredRole.equals(a.getAuthority()))) {
+                return true;
+            }
+        }
         // Fallback: Spring Security ROLE_ADMIN granted authority
         return auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));

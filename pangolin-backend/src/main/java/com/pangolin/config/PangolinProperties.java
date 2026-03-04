@@ -22,7 +22,10 @@ public record PangolinProperties(
         File file,
         Http http,
         Delete delete,
-        Auth auth
+        Auth auth,
+        Mail mail,
+        Webhook webhook,
+        Quota quota
 ) {
     public record Manager(String url) {}
     public record Storage(String root) {}
@@ -32,5 +35,8 @@ public record PangolinProperties(
     public record File(long maxSizeMb) {}
     public record Http(int connectTimeout, int readTimeout) {}
     public record Delete(boolean enabled) {}
-    public record Auth(boolean enabled, String adminGroup) {}
+    public record Auth(boolean enabled, String adminGroup, String adminRole) {}
+    public record Mail(String host, int port, String username, String password, String from) {}
+    public record Webhook(String url) {}
+    public record Quota(int maxConcurrentJobs, int maxSubmissionsPerHour) {}
 }
