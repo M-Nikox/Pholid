@@ -27,9 +27,7 @@ jobs:
         run: mvn test -B
 
       - name: Publish test results
-        uses: dorny/test-reporter@v1
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          name: Test Results
-          path: pangolin-backend/target/surefire-reports/*.xml
-          reporter: java-junit
+          files: pangolin-backend/target/surefire-reports/*.xml
