@@ -68,6 +68,29 @@ services:
       - "com.pangolin.service=flamenco-worker"
 
   # ============================================
+  # POSTGRES - Persistent Database
+  # ============================================
+  postgres:
+    image: postgres:17
+    container_name: pangolin-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-pangolin}
+      - POSTGRES_USER=${POSTGRES_USER:-pangolin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pangolin}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pangolin} -d ${POSTGRES_DB:-pangolin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.pangolin.service=database"
+
+  # ============================================
   # PANGOLIN BACKEND - Submission API
   # ============================================
   pangolin-backend:
@@ -86,8 +109,13 @@ services:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - STORAGE_ROOT=/shared
       - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false} # Don't forget to edit this in the .env, it's set to false by default
+      - POSTGRES_DB=${POSTGRES_DB:-pangolin}
+      - POSTGRES_USER=${POSTGRES_USER:-pangolin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pangolin}
     depends_on:
       flamenco-manager:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     labels:
       - "com.pangolin.service=backend"
@@ -268,3 +296,6 @@ volumes:
   # Monitoring data
   prometheus-data:
   grafana-data:
+
+  # Database data
+  postgres-data:
