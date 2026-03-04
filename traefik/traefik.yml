@@ -1,0 +1,54 @@
+# ============================================
+# TRAEFIK STATIC CONFIGURATION
+# ============================================
+# Dynamic settings (ACME email, dashboard toggle) are passed via
+# environment variables in docker-compose.yml using Traefik's env-var
+# override convention (e.g. TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL).
+
+log:
+  level: INFO
+
+# Ping endpoint used by the Docker healthcheck
+ping: {}
+
+api:
+  # Toggle dashboard via TRAEFIK_API_DASHBOARD / TRAEFIK_API_INSECURE env vars
+  dashboard: false
+  insecure: false
+
+entryPoints:
+  # HTTP – redirects all traffic to HTTPS
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  # HTTPS – TLS termination here
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    # Only route containers that explicitly opt-in with traefik.enable=true
+    exposedByDefault: false
+    network: pangolin-network
+
+# ============================================
+# CERTIFICATE RESOLVERS
+# ============================================
+# Self-signed (default): leave TRAEFIK_CERT_RESOLVER empty in .env.
+#   Traefik generates a built-in self-signed cert automatically.
+#
+# Let's Encrypt: set TRAEFIK_CERT_RESOLVER=letsencrypt and ACME_EMAIL
+#   in .env. The ACME email is injected via the env var:
+#   TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      # Email is injected via TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
