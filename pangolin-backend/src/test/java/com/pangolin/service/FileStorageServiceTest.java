@@ -37,7 +37,8 @@ class FileStorageServiceTest {
                 new PangolinProperties.ProjectName(100),
                 new PangolinProperties.File(512),
                 new PangolinProperties.Http(10000, 30000),
-                new PangolinProperties.Delete(false)
+                new PangolinProperties.Delete(false),
+                new PangolinProperties.Auth(false, "pangolin-admins")
         );
         service = new FileStorageService(props);
     }

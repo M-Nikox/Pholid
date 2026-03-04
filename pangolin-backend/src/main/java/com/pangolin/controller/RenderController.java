@@ -14,6 +14,7 @@ import com.pangolin.exception.JobConflictException;
 import com.pangolin.exception.ValidationException;
 import com.pangolin.service.FileStorageService;
 import com.pangolin.service.JobSubmissionService;
+import com.pangolin.service.UserContextService;
 import com.pangolin.validation.IdValidator;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -43,17 +44,20 @@ public class RenderController {
     private final FlamencoClient flamencoClient;
     private final PangolinProperties props;
     private final AuditLogService auditLogService;
+    private final UserContextService userContextService;
 
     public RenderController(JobSubmissionService submissionService,
                             FileStorageService storageService,
                             FlamencoClient flamencoClient,
                             PangolinProperties props,
-                            AuditLogService auditLogService) {
-        this.submissionService = submissionService;
-        this.storageService    = storageService;
-        this.flamencoClient    = flamencoClient;
-        this.props             = props;
-        this.auditLogService   = auditLogService;
+                            AuditLogService auditLogService,
+                            UserContextService userContextService) {
+        this.submissionService  = submissionService;
+        this.storageService     = storageService;
+        this.flamencoClient     = flamencoClient;
+        this.props              = props;
+        this.auditLogService    = auditLogService;
+        this.userContextService = userContextService;
     }
 
     @PostMapping("/submit")
@@ -65,7 +69,8 @@ public class RenderController {
             @RequestParam(value = "computeMode", defaultValue = "gpu-cuda") String computeMode)
             throws IOException {
 
-        String jobId = submissionService.submit(file, projectName, frames, priority, computeMode);
+        String submittedBy = userContextService.getCurrentUsername();
+        String jobId = submissionService.submit(file, projectName, frames, priority, computeMode, submittedBy);
         auditLogService.logAction("JOB_SUBMITTED", "JOB", jobId, "project=" + projectName);
         return ResponseEntity.ok(Map.of(
                 "message", "Job submitted successfully!",
@@ -77,6 +82,11 @@ public class RenderController {
     public void download(@PathVariable String jobId, HttpServletResponse response) throws IOException {
         if (!IdValidator.isValidPangolinId(jobId)) {
             response.sendError(HttpStatus.BAD_REQUEST.value(), "Invalid job ID format");
+            return;
+        }
+        if (!userContextService.canAccessByPangolinId(jobId)) {
+            auditLogService.logAction("JOB_ACCESS_DENIED", "JOB", jobId, "action=download");
+            response.sendError(HttpStatus.FORBIDDEN.value(), "Access denied");
             return;
         }
         storageService.streamZip(jobId, response);
@@ -94,6 +104,12 @@ public class RenderController {
     public ResponseEntity<Map<String, Object>> deleteJob(@PathVariable String flamencoJobId) {
         if (!props.delete().enabled())              throw new DeleteNotEnabledException();
         if (!IdValidator.isValidFlamencoId(flamencoJobId)) throw new ValidationException("Invalid Flamenco job ID format.");
+
+        if (!userContextService.canAccessByFlamencoId(flamencoJobId)) {
+            auditLogService.logAction("JOB_ACCESS_DENIED", "JOB", flamencoJobId, "action=delete");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access denied"));
+        }
 
         Map<String, Object> job = flamencoClient.getJob(flamencoJobId);
         if (job == null) throw new ValidationException("Job not found in Flamenco.");

@@ -11,6 +11,7 @@ import com.pangolin.client.FlamencoClient;
 import com.pangolin.dto.JobSetStatusRequest;
 import com.pangolin.dto.TaskLogMeta;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.service.UserContextService;
 import com.pangolin.validation.IdValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,19 +42,23 @@ public class JobsController {
     private final FlamencoClient flamencoClient;
     private final RestClient restClient;
     private final AuditLogService auditLogService;
+    private final UserContextService userContextService;
 
     public JobsController(FlamencoClient flamencoClient, RestClient restClient,
-                          AuditLogService auditLogService) {
-        this.flamencoClient = flamencoClient;
-        this.restClient     = restClient;
-        this.auditLogService = auditLogService;
+                          AuditLogService auditLogService,
+                          UserContextService userContextService) {
+        this.flamencoClient     = flamencoClient;
+        this.restClient         = restClient;
+        this.auditLogService    = auditLogService;
+        this.userContextService = userContextService;
     }
 
     @GetMapping("/active")
     public ResponseEntity<Map<String, Object>> getActiveJobs() {
         Map<String, Object> body = flamencoClient.getJobs(ACTIVE_STATUSES, null, null);
-        log.info("Fetched active jobs. Count: {}", jobCount(body));
-        return ResponseEntity.ok(body);
+        Map<String, Object> filtered = userContextService.filterJobsForCurrentUser(body);
+        log.info("Fetched active jobs. Count: {}", jobCount(filtered));
+        return ResponseEntity.ok(filtered);
     }
 
     @GetMapping("/previous")
@@ -65,13 +70,20 @@ public class JobsController {
         if (offset < 0)               throw new ValidationException("Offset must be >= 0");
 
         Map<String, Object> body = flamencoClient.getJobs("completed,failed,canceled", limit, offset);
-        log.info("Fetched previous jobs. Count: {}, Offset: {}, Limit: {}", jobCount(body), offset, limit);
-        return ResponseEntity.ok(body);
+        Map<String, Object> filtered = userContextService.filterJobsForCurrentUser(body);
+        log.info("Fetched previous jobs. Count: {}, Offset: {}, Limit: {}", jobCount(filtered), offset, limit);
+        return ResponseEntity.ok(filtered);
     }
 
     @PostMapping("/{jobId}/cancel")
     public ResponseEntity<Map<String, Object>> cancelJob(@PathVariable String jobId) {
         if (!IdValidator.isValidFlamencoId(jobId)) throw new ValidationException("Invalid job ID format");
+
+        if (!userContextService.canAccessByFlamencoId(jobId)) {
+            auditLogService.logAction("JOB_ACCESS_DENIED", "JOB", jobId, "action=cancel");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access denied", "jobId", jobId));
+        }
 
         try {
             flamencoClient.setJobStatus(jobId,

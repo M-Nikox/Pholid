@@ -8,6 +8,7 @@ package com.pangolin.service;
 
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.config.PangolinProperties;
+import com.pangolin.job.JobRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -36,12 +37,14 @@ class JobMappingTest {
                 new PangolinProperties.ProjectName(20),
                 new PangolinProperties.File(512),
                 new PangolinProperties.Http(10000, 30000),
-                new PangolinProperties.Delete(false)
+                new PangolinProperties.Delete(false),
+                new PangolinProperties.Auth(false, "pangolin-admins")
         );
         service = new JobSubmissionService(
                 mock(FlamencoClient.class),
                 mock(FileStorageService.class),
-                props
+                props,
+                mock(JobRepository.class)
         );
     }
 
