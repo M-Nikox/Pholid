@@ -12,6 +12,8 @@ import com.pangolin.config.PangolinProperties;
 import com.pangolin.dto.JobSubmitRequest;
 import com.pangolin.dto.JobTypesResponse;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.job.Job;
+import com.pangolin.job.JobRepository;
 import com.pangolin.model.FrameValidationResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,7 @@ import org.springframework.web.util.HtmlUtils;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -39,13 +42,16 @@ public class JobSubmissionService {
     private final FlamencoClient flamencoClient;
     private final FileStorageService storageService;
     private final PangolinProperties props;
+    private final JobRepository jobRepository;
 
     public JobSubmissionService(FlamencoClient flamencoClient,
                                 FileStorageService storageService,
-                                PangolinProperties props) {
+                                PangolinProperties props,
+                                JobRepository jobRepository) {
         this.flamencoClient = flamencoClient;
         this.storageService = storageService;
         this.props = props;
+        this.jobRepository = jobRepository;
     }
 
     /**
@@ -53,13 +59,16 @@ public class JobSubmissionService {
      * or propagates RestClientException for Flamenco connectivity failures
      * (handled by GlobalExceptionHandler).
      *
+     * @param submittedBy the username to record as job owner (use {@code "anonymous"} when
+     *                    auth is disabled)
      * @return the generated Pangolin job ID
      */
     public String submit(MultipartFile file,
                          String rawProjectName,
                          String frames,
                          String priority,
-                         String computeMode) throws IOException {
+                         String computeMode,
+                         String submittedBy) throws IOException {
 
         String safeName = sanitizeProjectName(rawProjectName);
 
@@ -73,7 +82,8 @@ public class JobSubmissionService {
 
         int flamencoPriority = calculatePriority(priority);
         String jobId = createJobDirectory(file);
-        sendToManager(jobId, safeName, frames, totalFrames, flamencoPriority, computeMode);
+        String flamencoJobId = sendToManager(jobId, safeName, frames, totalFrames, flamencoPriority, computeMode);
+        saveJobRecord(jobId, flamencoJobId, safeName, file.getOriginalFilename(), frames, submittedBy);
         return jobId;
     }
 
@@ -172,12 +182,12 @@ public class JobSubmissionService {
         return jobId;
     }
 
-    private void sendToManager(String jobId,
-                                String projectName,
-                                String frames,
-                                int totalFrames,
-                                int priority,
-                                String computeMode) {
+    private String sendToManager(String jobId,
+                                  String projectName,
+                                  String frames,
+                                  int totalFrames,
+                                  int priority,
+                                  String computeMode) {
 
         Path jobDir  = storageService.getJobRoot().resolve(jobId);
         String jobType = resolveJobType(computeMode);
@@ -201,8 +211,36 @@ public class JobSubmissionService {
                 buildSettings(frames, jobDir.resolve("input.blend"), jobDir, useGpu)
         );
 
-        flamencoClient.submitJob(request);
+        Map<String, Object> flamencoJob = flamencoClient.submitJob(request);
         log.info("Job {} submitted with priority {} type={}", jobId, priority, jobType);
+        if (flamencoJob != null && flamencoJob.get("id") instanceof String fid) {
+            return fid;
+        }
+        if (flamencoJob != null) {
+            log.warn("Flamenco submit response for job {} is missing 'id' field; ownership tracking will be unavailable", jobId);
+        }
+        return null;
+    }
+
+    private void saveJobRecord(String pangolinJobId, String flamencoJobId,
+                                String projectName, String blendFileName,
+                                String frames, String submittedBy) {
+        try {
+            Job job = new Job();
+            job.setName("Pangolin_" + projectName);
+            job.setStatus("active");
+            job.setProjectName(projectName);
+            job.setBlendFile(blendFileName);
+            job.setFrames(frames);
+            job.setSubmittedAt(OffsetDateTime.now());
+            job.setFlamencoJobId(flamencoJobId);
+            job.setSubmittedBy(submittedBy);
+            job.setPangolinJobId(pangolinJobId);
+            jobRepository.save(job);
+        } catch (Exception e) {
+            // Job tracking must never break the main submission flow
+            log.warn("Failed to save job record for pangolin job {}: {}", pangolinJobId, e.getMessage());
+        }
     }
 
     /**

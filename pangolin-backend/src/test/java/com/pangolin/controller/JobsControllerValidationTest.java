@@ -9,6 +9,7 @@ package com.pangolin.controller;
 import com.pangolin.audit.AuditLogService;
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.service.UserContextService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,8 +34,10 @@ class JobsControllerValidationTest {
         flamencoClient = mock(FlamencoClient.class);
         when(flamencoClient.getJobs(anyString(), anyInt(), anyInt()))
                 .thenReturn(java.util.Map.of());
+        UserContextService userContextService = mock(UserContextService.class);
+        when(userContextService.filterJobsForCurrentUser(any())).thenAnswer(inv -> inv.getArgument(0));
         controller = new JobsController(flamencoClient, mock(RestClient.class),
-                mock(AuditLogService.class));
+                mock(AuditLogService.class), userContextService);
     }
 
     // ── Limit ───────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import com.pangolin.client.FlamencoClient;
 import com.pangolin.config.PangolinProperties;
 import com.pangolin.service.FileStorageService;
 import com.pangolin.service.JobSubmissionService;
+import com.pangolin.service.UserContextService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -43,6 +44,7 @@ class RenderControllerDeleteTest {
     @MockitoBean JobSubmissionService submissionService;
     @MockitoBean PangolinProperties props;
     @MockitoBean AuditLogService auditLogService;
+    @MockitoBean UserContextService userContextService;
 
     // ── Delete not enabled ──────────────────────────────────────────────────
 
@@ -92,6 +94,7 @@ class RenderControllerDeleteTest {
 
     private void enableDelete() {
         when(props.delete()).thenReturn(new PangolinProperties.Delete(true));
+        when(userContextService.canAccessByFlamencoId(any())).thenReturn(true);
     }
 
     private void mockJobWithStatus(String status) {
