@@ -12,6 +12,7 @@ directory are excluded by `.gitignore`.
 | `grafana_admin_password.txt` | grafana | Grafana admin password |
 | `oidc_client_secret.txt` | pangolin-backend | OIDC client secret for Authentik (required when `PANGOLIN_AUTH_ENABLED=true`) |
 | `grafana_oidc_client_secret.txt` | grafana | OIDC client secret for Grafana ↔ Authentik (required when `PANGOLIN_AUTH_ENABLED=true`) |
+| `smtp_password.txt` | pangolin-backend | SMTP password for email notifications (can be empty if not using email) |
 
 > **Note:** `oidc_client_secret.txt` and `grafana_oidc_client_secret.txt` must exist even when
 > `PANGOLIN_AUTH_ENABLED=false` because Docker Compose declares them as secrets. Create them with a
@@ -31,6 +32,9 @@ echo -n "your-oidc-client-secret" > secrets/oidc_client_secret.txt
 
 # OIDC client secret for Grafana (copy from Authentik after creating the Grafana application)
 echo -n "your-grafana-oidc-client-secret" > secrets/grafana_oidc_client_secret.txt
+
+# SMTP password for email notifications (leave empty if not using email)
+echo -n "your-smtp-password" > secrets/smtp_password.txt
 
 # Restrict permissions so only the owner can read them
 chmod 600 secrets/*.txt
