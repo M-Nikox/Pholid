@@ -2,6 +2,7 @@
  * Pangolin Render Manager - Main Stylesheet 
  */
 
+/* ===== THEME: Light (default) ===== */
 :root {
     --pangolin-orange: #FA8112;
     --accent-primary: #FA8112;
@@ -13,6 +14,7 @@
     --bg-gradient: linear-gradient(135deg, #FAF3E1 0%, #F5E7C6 100%);
 }
 
+/* ===== THEME: Dark ===== */
 [data-theme="dark"] {
     --glass-bg: rgba(28, 19, 40, 0.8);
     --glass-border: rgba(250, 129, 18, 0.3);
@@ -20,6 +22,30 @@
     --text-secondary: rgba(250, 243, 225, 0.5);
     --bg-secondary: rgba(255, 255, 255, 0.07);
     --bg-gradient: linear-gradient(135deg, #0F0916 0%, #1C1328 100%);
+}
+
+/* ===== THEME: High Contrast (WCAG-friendly) ===== */
+[data-theme="high-contrast"] {
+    --pangolin-orange: #FF6A00;
+    --accent-primary: #FF6A00;
+    --glass-bg: #FFFFFF;
+    --glass-border: #000000;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --bg-secondary: #EEEEEE;
+    --bg-gradient: linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 100%);
+}
+
+/* ===== THEME: Midnight (deep dark with blue accents) ===== */
+[data-theme="midnight"] {
+    --pangolin-orange: #4D9FFF;
+    --accent-primary: #4D9FFF;
+    --glass-bg: rgba(10, 14, 30, 0.9);
+    --glass-border: rgba(77, 159, 255, 0.3);
+    --text-primary: #E8F0FF;
+    --text-secondary: rgba(232, 240, 255, 0.5);
+    --bg-secondary: rgba(77, 159, 255, 0.08);
+    --bg-gradient: linear-gradient(135deg, #020510 0%, #0A0E1E 100%);
 }
 
 body {
@@ -72,8 +98,211 @@ body {
     gap: 1.5rem;
 }
 
-@media (max-width: 1024px) {
-    .main-layout-grid { grid-template-columns: 1fr; }
+/* Wide screens: side-by-side layout */
+@media (min-width: 1200px) {
+    .main-layout-grid {
+        grid-template-columns: 1fr 420px;
+    }
+}
+
+/* Medium screens: stacked */
+@media (max-width: 1199px) and (min-width: 769px) {
+    .main-layout-grid {
+        grid-template-columns: 1fr;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* Mobile: single column, touch-friendly */
+@media (max-width: 768px) {
+    .main-layout-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    body {
+        padding: 0.75rem !important;
+    }
+    .glass-card {
+        border-radius: 16px;
+    }
+}
+
+/* ===== TABS ===== */
+.pangolin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 1.5rem;
+}
+
+.pangolin-tab-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 150ms ease, border-color 150ms ease;
+    border-radius: 6px 6px 0 0;
+    opacity: 0.5;
+}
+
+.pangolin-tab-btn:hover {
+    opacity: 0.8;
+}
+
+.pangolin-tab-btn.active {
+    opacity: 1;
+    border-bottom-color: var(--pangolin-orange);
+    color: var(--pangolin-orange);
+}
+
+.pangolin-tab-panel {
+    display: none;
+}
+
+.pangolin-tab-panel.active {
+    display: block;
+}
+
+/* ===== COLLAPSIBLE / ACCORDION ===== */
+.pangolin-collapsible {
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.pangolin-collapsible summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.6;
+    list-style: none;
+    transition: opacity 150ms ease, background 150ms ease;
+}
+
+.pangolin-collapsible summary::-webkit-details-marker { display: none; }
+
+.pangolin-collapsible summary:hover {
+    opacity: 0.9;
+    background: var(--bg-secondary);
+}
+
+.pangolin-collapsible[open] summary {
+    opacity: 1;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.pangolin-chevron {
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+    transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+    flex-shrink: 0;
+}
+
+.pangolin-collapsible[open] .pangolin-chevron {
+    transform: rotate(180deg);
+}
+
+.pangolin-collapsible-body {
+    padding: 1rem;
+    animation: collapseIn 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes collapseIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== THEME SELECTOR ===== */
+.theme-selector-dropdown {
+    position: relative;
+}
+
+.theme-selector-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.theme-selector-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(250, 129, 18, 0.15);
+}
+
+.theme-selector-btn:active {
+    transform: scale(0.94);
+    transition-duration: 60ms;
+}
+
+.theme-selector-list {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 100;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    overflow: hidden;
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    white-space: nowrap;
+}
+
+.theme-selector-dropdown.open .theme-selector-list {
+    display: block;
+}
+
+.theme-selector-option {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.theme-selector-option:hover {
+    background: var(--bg-secondary);
+}
+
+.theme-selector-option.active {
+    color: var(--pangolin-orange);
+}
+
+.theme-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.15);
 }
 
 /* ===== TACTILE INTERACTIONS ===== */
@@ -278,4 +507,15 @@ header button.glass-card:active {
 
 .pangolin-dropdown-option.selected {
     color: var(--pangolin-orange);
+}
+
+/* ===== GRAFANA RESPONSIVE ===== */
+.grafana-panel-container {
+    height: 450px;
+}
+
+@media (max-width: 768px) {
+    .grafana-panel-container {
+        height: 280px;
+    }
 }

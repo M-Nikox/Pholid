@@ -78,7 +78,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/prometheus",
-                                "/css/**", "/js/**", "/svg/**")
+                                "/css/**", "/js/**", "/svg/**",
+                                "/error", "/error/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
