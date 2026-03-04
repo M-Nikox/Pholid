@@ -1,6 +1,6 @@
-/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
- *  Pangolin Render Form Handler
- *  Handles form submission, validation, and file size checks
+/* Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ * Pangolin Render Form Handler
+ * Handles form submission, validation, and file size checks
  */
 
 const renderForm = (() => {
@@ -402,3 +402,49 @@ const renderForm = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', renderForm.init);
+/* ===== CUSTOM DROPDOWN INIT ===== */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.pangolin-dropdown').forEach(dropdown => {
+        const targetId = dropdown.dataset.target;
+        const select   = document.getElementById(targetId);
+        const btn      = dropdown.querySelector('.pangolin-dropdown-btn');
+        const label    = dropdown.querySelector('.pangolin-dropdown-label');
+        const options  = dropdown.querySelectorAll('.pangolin-dropdown-option');
+
+        // Toggle open
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Close all other dropdowns first
+            document.querySelectorAll('.pangolin-dropdown.open').forEach(d => {
+                if (d !== dropdown) d.classList.remove('open');
+            });
+            dropdown.classList.toggle('open');
+        });
+
+        // Select option
+        options.forEach(option => {
+            option.addEventListener('click', () => {
+                const value = option.dataset.value;
+                const text  = option.textContent;
+
+                // Update label
+                label.textContent = text;
+
+                // Sync hidden select so FormData and getElementById().value work
+                select.value = value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+
+                // Update selected state
+                options.forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+
+                dropdown.classList.remove('open');
+            });
+        });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.pangolin-dropdown.open').forEach(d => d.classList.remove('open'));
+    });
+});
