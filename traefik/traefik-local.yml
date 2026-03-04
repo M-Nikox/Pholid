@@ -1,0 +1,45 @@
+# ============================================
+# TRAEFIK STATIC CONFIGURATION — local profile
+# ============================================
+# Port-based routing for zero-hosts-file local deployment.
+# Each service gets its own HTTPS port; no hostname differentiation required.
+#
+#   https://localhost:8443  → Pangolin backend   (entrypoint: pangolin-ep)
+#   https://localhost:3443  → Grafana            (entrypoint: grafana-ep)
+#   https://localhost:9443  → Authentik          (entrypoint: authentik-ep)
+#
+# IMPORTANT: The port numbers below MUST match the host-side port mappings
+# in the traefik-local service definition in docker-compose.yml
+# (ports: 8443:8443, 3443:3443, 9443:9443).
+#
+# TLS: self-signed only (no ACME / Let's Encrypt).
+# Traefik generates a built-in self-signed certificate automatically.
+
+log:
+  level: INFO
+
+# Ping endpoint used by the Docker healthcheck
+ping: {}
+
+api:
+  dashboard: false
+  insecure: false
+
+entryPoints:
+  # HTTPS – Pangolin backend
+  pangolin-ep:
+    address: ":8443"
+
+  # HTTPS – Grafana
+  grafana-ep:
+    address: ":3443"
+
+  # HTTPS – Authentik
+  authentik-ep:
+    address: ":9443"
+
+providers:
+  docker:
+    # Only route containers that explicitly opt-in with traefik.enable=true
+    exposedByDefault: false
+    network: pangolin-network

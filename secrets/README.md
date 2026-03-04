@@ -4,37 +4,47 @@ This directory holds the secret files read by Docker Compose at startup.
 **Never commit actual secret files to version control** — `*.txt` files in this
 directory are excluded by `.gitignore`.
 
-## Required secrets
+## Required secrets by profile
+
+### `simple` profile
+Three secret files are needed:
 
 | File | Used by | Description |
 |---|---|---|
 | `postgres_password.txt` | postgres, pangolin-backend | PostgreSQL password |
 | `grafana_admin_password.txt` | grafana | Grafana admin password |
-| `oidc_client_secret.txt` | pangolin-backend | OIDC client secret for Authentik (required when `PANGOLIN_AUTH_ENABLED=true`) |
-| `grafana_oidc_client_secret.txt` | grafana | OIDC client secret for Grafana ↔ Authentik (required when `PANGOLIN_AUTH_ENABLED=true`) |
-| `smtp_password.txt` | pangolin-backend | SMTP password for email notifications (can be empty if not using email) |
+| `smtp_password.txt` | pangolin-backend | SMTP password (can be empty) |
 
-> **Note:** `oidc_client_secret.txt` and `grafana_oidc_client_secret.txt` must exist even when
-> `PANGOLIN_AUTH_ENABLED=false` because Docker Compose declares them as secrets. Create them with a
-> placeholder value if you are not using OIDC.
+### `local` and `production` profiles
+All five secret files are required:
+
+| File | Used by | Description |
+|---|---|---|
+| `postgres_password.txt` | postgres, pangolin-backend | PostgreSQL password |
+| `grafana_admin_password.txt` | grafana | Grafana admin password |
+| `oidc_client_secret.txt` | pangolin-backend | OIDC client secret for Authentik |
+| `grafana_oidc_client_secret.txt` | grafana | OIDC client secret for Grafana ↔ Authentik |
+| `smtp_password.txt` | pangolin-backend | SMTP password (can be empty) |
 
 ## Creating secret files
 
 ```bash
-# PostgreSQL password
+# PostgreSQL password (all profiles)
 echo -n "your-strong-postgres-password" > secrets/postgres_password.txt
 
-# Grafana admin password
+# Grafana admin password (all profiles)
 echo -n "your-strong-grafana-password" > secrets/grafana_admin_password.txt
+
+# SMTP password for email notifications (all profiles — leave empty if not using email)
+echo -n "your-smtp-password" > secrets/smtp_password.txt
+
+# --- The files below are only required for the 'local' and 'production' profiles ---
 
 # OIDC client secret for Pangolin (copy from Authentik after creating the application)
 echo -n "your-oidc-client-secret" > secrets/oidc_client_secret.txt
 
 # OIDC client secret for Grafana (copy from Authentik after creating the Grafana application)
 echo -n "your-grafana-oidc-client-secret" > secrets/grafana_oidc_client_secret.txt
-
-# SMTP password for email notifications (leave empty if not using email)
-echo -n "your-smtp-password" > secrets/smtp_password.txt
 
 # Restrict permissions so only the owner can read them
 chmod 600 secrets/*.txt
@@ -48,7 +58,8 @@ chmod 600 secrets/*.txt
 ## Authentik secret key
 
 `AUTHENTIK_SECRET_KEY` is passed as an environment variable (not a Docker secret) because
-Authentik reads it via its own configuration mechanism. Set it in your `.env` file:
+Authentik reads it via its own configuration mechanism. Set it in your `.env` file
+(**required for `local` and `production` profiles only**):
 
 ```bash
 # Generate a cryptographically secure key (50+ characters recommended)

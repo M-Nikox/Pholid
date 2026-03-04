@@ -59,8 +59,16 @@ Workers are disposable by design. As long as the manager and backend remain oper
 
 ## Quick Start
 
-1. Copy `.env.example` and configure environment variables
-2. Rename to `.env`
+1. Copy `.env.example` to `.env` and set `COMPOSE_PROFILES` to your chosen deployment mode:
+
+   | Profile | Description |
+   |---|---|
+   | `simple` | No auth, no Traefik — direct port access on `localhost:8080` / `localhost:3000` |
+   | `local` | Auth + self-signed TLS via Traefik — `https://localhost:8443` / `:3443` / `:9443` |
+   | `production` | Auth + TLS via Traefik, hostname-based routing — requires DNS / hosts file |
+
+2. Create the required secret files (see `secrets/README.md`).
+
 3. Run:
 
 ```bash
@@ -70,6 +78,10 @@ docker compose up -d --build
 Deployment completes in under one minute on most systems.
 
 Note: Initial Grafana database creation may take a short moment.
+
+> **Switching profiles:** update `COMPOSE_PROFILES` in `.env` and re-run
+> `docker compose up -d --build`. You may need to stop the old containers first
+> with `docker compose down`.
 
 ## Acknowledgments
 
