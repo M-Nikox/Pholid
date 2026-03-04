@@ -1,6 +1,88 @@
+# ============================================
+# YAML EXTENSION FIELDS
+# ============================================
+# Shared configuration blocks referenced via YAML anchors below.
+# These are ignored by Docker Compose at the top level (x- prefix).
+
+x-backend-common: &backend-common
+  build:
+    context: ./pangolin-backend
+    dockerfile: Dockerfile
+  container_name: pangolin-backend
+  restart: unless-stopped
+  volumes:
+    - flamenco-shared:/shared
+  networks:
+    - pangolin-network
+
+# Base environment variables common to all backend variants (no auth)
+x-backend-env-base: &backend-env-base
+  FLAMENCO_MANAGER_URL: "http://flamenco-manager:8080"
+  STORAGE_ROOT: "/shared"
+  PANGOLIN_DELETE_ENABLED: "${ENABLE_DELETE:-false}"
+  POSTGRES_DB: "${POSTGRES_DB:-pangolin}"
+  POSTGRES_USER: "${POSTGRES_USER:-pangolin}"
+  POSTGRES_PASSWORD_FILE: "/run/secrets/postgres_password"
+  SMTP_HOST: "${SMTP_HOST:-}"
+  SMTP_PORT: "${SMTP_PORT:-587}"
+  SMTP_USERNAME: "${SMTP_USERNAME:-}"
+  SMTP_FROM: "${SMTP_FROM:-pangolin@localhost}"
+  SMTP_PASSWORD_FILE: "/run/secrets/smtp_password"
+  PANGOLIN_WEBHOOK_URL: "${PANGOLIN_WEBHOOK_URL:-}"
+  PANGOLIN_ADMIN_ROLE: "${PANGOLIN_ADMIN_ROLE:-admin}"
+  MAX_CONCURRENT_JOBS: "${MAX_CONCURRENT_JOBS:-10}"
+  MAX_SUBMISSIONS_PER_HOUR: "${MAX_SUBMISSIONS_PER_HOUR:-20}"
+
+# Base environment variables for auth-enabled backend variants (local + production)
+x-backend-env-auth: &backend-env-auth
+  <<: *backend-env-base
+  OIDC_CLIENT_ID: "${OIDC_CLIENT_ID:-pangolin}"
+  OIDC_CLIENT_SECRET_FILE: "/run/secrets/oidc_client_secret"
+
+x-grafana-common: &grafana-common
+  image: grafana/grafana:12.3.4
+  container_name: pangolin-grafana
+  restart: unless-stopped
+  volumes:
+    - grafana-data:/var/lib/grafana
+    - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+  networks:
+    - pangolin-network
+  depends_on:
+    - prometheus
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+  labels:
+    - "com.pangolin.service=monitoring"
+
+# Base Grafana environment variables common to all Grafana variants
+x-grafana-env-base: &grafana-env-base
+  GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+  GF_SECURITY_ADMIN_PASSWORD__FILE: "/run/secrets/grafana_admin_password"
+  GF_USERS_ALLOW_SIGN_UP: "false"
+  GF_AUTH_ANONYMOUS_ENABLED: "${GF_AUTH_ANONYMOUS_ENABLED}"
+  GF_AUTH_ANONYMOUS_ORG_ROLE: "${GF_AUTH_ANONYMOUS_ORG_ROLE}"
+  GF_SECURITY_ALLOW_EMBEDDING: "${GF_SECURITY_ALLOW_EMBEDDING}"
+  GF_AUTH_GENERIC_OAUTH_NAME: "Authentik"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "${GRAFANA_OIDC_CLIENT_ID:-grafana}"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET_FILE: "/run/secrets/grafana_oidc_client_secret"
+  GF_AUTH_GENERIC_OAUTH_SCOPES: "openid profile email"
+
+x-authentik-env: &authentik-env
+  AUTHENTIK_REDIS__HOST: "redis"
+  AUTHENTIK_POSTGRESQL__HOST: "postgres"
+  AUTHENTIK_POSTGRESQL__USER: "${POSTGRES_USER:-pangolin}"
+  AUTHENTIK_POSTGRESQL__NAME: "authentik"
+  AUTHENTIK_POSTGRESQL__PASSWORD: "${POSTGRES_PASSWORD}"
+  AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY}"
+
 services:
   # ============================================
-  # TRAEFIK - Reverse Proxy / TLS Termination
+  # TRAEFIK (production) - Reverse Proxy / TLS Termination
   # ============================================
   # Routes HTTPS traffic to the backend and Grafana using Docker labels.
   # TLS modes:
@@ -11,6 +93,7 @@ services:
   traefik:
     image: traefik:v3.6.9
     container_name: pangolin-traefik
+    profiles: ["production"]
     restart: unless-stopped
     ports:
       - "80:80"   # HTTP (redirected to HTTPS)
@@ -25,6 +108,37 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only Docker socket for service discovery
       - ./traefik/traefik.yml:/traefik.yml:ro        # Static Traefik configuration
       - letsencrypt:/letsencrypt                     # Persisted TLS certificates / ACME state
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.pangolin.service=proxy"
+
+  # ============================================
+  # TRAEFIK (local) - Port-Based Reverse Proxy
+  # ============================================
+  # Routes HTTPS traffic using per-port entrypoints — no hostname/DNS required.
+  # Each service gets its own HTTPS port:
+  #   https://localhost:8443 -> Pangolin backend
+  #   https://localhost:3443 -> Grafana
+  #   https://localhost:9443 -> Authentik
+  # Uses a self-signed certificate (no Let's Encrypt / no ACME).
+  traefik-local:
+    image: traefik:v3.6.9
+    container_name: pangolin-traefik
+    profiles: ["local"]
+    restart: unless-stopped
+    ports:
+      - "8443:8443" # HTTPS – Pangolin backend
+      - "3443:3443" # HTTPS – Grafana
+      - "9443:9443" # HTTPS – Authentik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik-local.yml:/traefik.yml:ro  # Local static config (no ACME, per-port entrypoints)
     networks:
       - pangolin-network
     healthcheck:
@@ -133,47 +247,56 @@ services:
   # ============================================
   # PANGOLIN BACKEND - Submission API
   # ============================================
-  # Exposed via Traefik on https://${PANGOLIN_DOMAIN}
-  pangolin-backend:
-    build:
-      context: ./pangolin-backend
-      dockerfile: Dockerfile
-    container_name: pangolin-backend
-    restart: unless-stopped
+
+  # --- simple: direct port exposure, no auth ---
+  pangolin-backend-simple:
+    <<: *backend-common
+    profiles: ["simple"]
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *backend-env-base
+      PANGOLIN_AUTH_ENABLED: "false"
+    secrets:
+      - postgres_password
+      - smtp_password
+    labels:
+      - "com.pangolin.service=backend"
+
+  # --- local: behind Traefik on https://localhost:8443, auth enabled ---
+  pangolin-backend-local:
+    <<: *backend-common
+    profiles: ["local"]
     expose:
       - "8080"
-    volumes:
-      - flamenco-shared:/shared
-    networks:
-      - pangolin-network
     environment:
-      - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
-      - STORAGE_ROOT=/shared
-      - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false} # Don't forget to edit this in the .env, it's set to false by default
-      - POSTGRES_DB=${POSTGRES_DB:-pangolin}
-      - POSTGRES_USER=${POSTGRES_USER:-pangolin}
-      # DB password is read from the Docker secret file by SecretsEnvironmentPostProcessor.
-      # If the secret file is absent, Spring falls back to ${POSTGRES_PASSWORD:pangolin}
-      # from application.properties (useful when running the backend outside of Docker).
-      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
-      # OIDC / Authentik (only used when PANGOLIN_AUTH_ENABLED=true)
-      - PANGOLIN_AUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-pangolin}
-      - OIDC_CLIENT_SECRET_FILE=/run/secrets/oidc_client_secret
-      - OIDC_ISSUER_URI=${OIDC_ISSUER_URI:-https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/pangolin/}
-      # SMTP / Email notifications (optional — only active when SMTP_HOST is set)
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - SMTP_FROM=${SMTP_FROM:-pangolin@localhost}
-      - SMTP_PASSWORD_FILE=/run/secrets/smtp_password
-      # Webhook notifications (optional — only active when PANGOLIN_WEBHOOK_URL is set)
-      - PANGOLIN_WEBHOOK_URL=${PANGOLIN_WEBHOOK_URL:-}
-      # Admin role configuration
-      - PANGOLIN_ADMIN_ROLE=${PANGOLIN_ADMIN_ROLE:-admin}
-      # Quota / rate limiting
-      - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-10}
-      - MAX_SUBMISSIONS_PER_HOUR=${MAX_SUBMISSIONS_PER_HOUR:-20}
+      <<: *backend-env-auth
+      PANGOLIN_AUTH_ENABLED: "true"
+      OIDC_ISSUER_URI: "https://localhost:9443/application/o/pangolin/"
+    secrets:
+      - postgres_password
+      - oidc_client_secret
+      - smtp_password
+    labels:
+      - "com.pangolin.service=backend"
+      # Traefik routing (local: catch-all on dedicated entrypoint)
+      - "traefik.enable=true"
+      - "traefik.http.routers.pangolin.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.pangolin.entrypoints=pangolin-ep"
+      - "traefik.http.routers.pangolin.tls=true"
+      - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
+
+  # --- production: behind Traefik on https://${PANGOLIN_DOMAIN} ---
+  # Exposed via Traefik on https://${PANGOLIN_DOMAIN}
+  pangolin-backend:
+    <<: *backend-common
+    profiles: ["production"]
+    expose:
+      - "8080"
+    environment:
+      <<: *backend-env-auth
+      PANGOLIN_AUTH_ENABLED: "${PANGOLIN_AUTH_ENABLED:-false}"
+      OIDC_ISSUER_URI: "${OIDC_ISSUER_URI:-https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/pangolin/}"
     secrets:
       - postgres_password
       - oidc_client_secret
@@ -194,6 +317,7 @@ services:
   redis:
     image: redis:8.6.1
     container_name: pangolin-redis
+    profiles: ["local", "production"]
     restart: unless-stopped
     command: --save 60 1 --loglevel warning
     volumes:
@@ -211,24 +335,53 @@ services:
   # ============================================
   # AUTHENTIK - Identity Provider (OIDC / SSO)
   # ============================================
-  # Exposed via Traefik on https://${AUTHENTIK_DOMAIN}
+
+  # --- local: accessible at https://localhost:9443 via Traefik ---
+  authentik-server-local:
+    image: ghcr.io/goauthentik/server:2026.2
+    container_name: pangolin-authentik-server
+    command: server
+    profiles: ["local"]
+    restart: unless-stopped
+    expose:
+      - "9000"
+    environment:
+      <<: *authentik-env
+    networks:
+      - pangolin-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.pangolin.service=authentik"
+      # Traefik routing (local: catch-all on dedicated entrypoint)
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.authentik.entrypoints=authentik-ep"
+      - "traefik.http.routers.authentik.tls=true"
+      - "traefik.http.services.authentik.loadbalancer.server.port=9000"
+
+  # --- production: accessible at https://${AUTHENTIK_DOMAIN} via Traefik ---
   # After first start: visit https://${AUTHENTIK_DOMAIN}/if/flow/initial-setup/
   # to create the admin account and configure OIDC applications.
   authentik-server:
     image: ghcr.io/goauthentik/server:2026.2
     container_name: pangolin-authentik-server
     command: server
+    profiles: ["production"]
     restart: unless-stopped
     expose:
       - "9000"
       - "9443"
     environment:
-      - AUTHENTIK_REDIS__HOST=redis
-      - AUTHENTIK_POSTGRESQL__HOST=postgres
-      - AUTHENTIK_POSTGRESQL__USER=${POSTGRES_USER:-pangolin}
-      - AUTHENTIK_POSTGRESQL__NAME=authentik
-      - AUTHENTIK_POSTGRESQL__PASSWORD=${POSTGRES_PASSWORD}
-      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      <<: *authentik-env
     networks:
       - pangolin-network
     depends_on:
@@ -255,14 +408,10 @@ services:
     image: ghcr.io/goauthentik/server:2026.2
     container_name: pangolin-authentik-worker
     command: worker
+    profiles: ["local", "production"]
     restart: unless-stopped
     environment:
-      - AUTHENTIK_REDIS__HOST=redis
-      - AUTHENTIK_POSTGRESQL__HOST=postgres
-      - AUTHENTIK_POSTGRESQL__USER=${POSTGRES_USER:-pangolin}
-      - AUTHENTIK_POSTGRESQL__NAME=authentik
-      - AUTHENTIK_POSTGRESQL__PASSWORD=${POSTGRES_PASSWORD}
-      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      <<: *authentik-env
     networks:
       - pangolin-network
     depends_on:
@@ -304,48 +453,62 @@ services:
   # ============================================
   # GRAFANA - Visualization & Dashboards
   # ============================================
-  # Exposed via Traefik on https://${GRAFANA_DOMAIN}
-  grafana:
-    image: grafana/grafana:12.3.4
-    container_name: pangolin-grafana
-    restart: unless-stopped
+
+  # --- simple: direct port exposure on localhost:3000, no auth ---
+  grafana-simple:
+    <<: *grafana-common
+    profiles: ["simple"]
+    ports:
+      - "3000:3000"
+    secrets:
+      - grafana_admin_password
+    environment:
+      <<: *grafana-env-base
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "false"
+      GF_SERVER_ROOT_URL: "http://localhost:3000"
+
+  # --- local: behind Traefik on https://localhost:3443, auth enabled ---
+  grafana-local:
+    <<: *grafana-common
+    profiles: ["local"]
     expose:
       - "3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      # Admin password is read from the Docker secret file (required – create secrets/grafana_admin_password.txt first).
-      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE}
-      - GF_SECURITY_ALLOW_EMBEDDING=${GF_SECURITY_ALLOW_EMBEDDING}
-      # OIDC via Authentik (only effective when GF_AUTH_GENERIC_OAUTH_ENABLED=true)
-      - GF_AUTH_GENERIC_OAUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
-      - GF_AUTH_GENERIC_OAUTH_NAME=Authentik
-      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GRAFANA_OIDC_CLIENT_ID:-grafana}
-      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET_FILE=/run/secrets/grafana_oidc_client_secret
-      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
-      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/authorize/
-      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/token/
-      - GF_AUTH_GENERIC_OAUTH_API_URL=https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/userinfo/
-      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN:-grafana.localhost}
     secrets:
       - grafana_admin_password
       - grafana_oidc_client_secret
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      
-    networks:
-      - pangolin-network
-    depends_on:
-      - prometheus
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    environment:
+      <<: *grafana-env-base
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://localhost:9443/application/o/authorize/"
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://localhost:9443/application/o/token/"
+      GF_AUTH_GENERIC_OAUTH_API_URL: "https://localhost:9443/application/o/userinfo/"
+      GF_SERVER_ROOT_URL: "https://localhost:3443"
+    labels:
+      - "com.pangolin.service=monitoring"
+      # Traefik routing (local: catch-all on dedicated entrypoint)
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.grafana.entrypoints=grafana-ep"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  # --- production: behind Traefik on https://${GRAFANA_DOMAIN} ---
+  # Exposed via Traefik on https://${GRAFANA_DOMAIN}
+  grafana:
+    <<: *grafana-common
+    profiles: ["production"]
+    expose:
+      - "3000"
+    secrets:
+      - grafana_admin_password
+      - grafana_oidc_client_secret
+    environment:
+      <<: *grafana-env-base
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "${PANGOLIN_AUTH_ENABLED:-false}"
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/authorize/"
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/token/"
+      GF_AUTH_GENERIC_OAUTH_API_URL: "https://${AUTHENTIK_DOMAIN:-authentik.localhost}/application/o/userinfo/"
+      GF_SERVER_ROOT_URL: "https://${GRAFANA_DOMAIN:-grafana.localhost}"
     labels:
       - "com.pangolin.service=monitoring"
       # Traefik routing
@@ -415,8 +578,6 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=monitoring"
-
-
 
   # ============================================
   # GPU EXPORTER - NVIDIA GPU Metrics
