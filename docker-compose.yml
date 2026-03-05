@@ -1,4 +1,3 @@
-# ============================================
 # YAML EXTENSION FIELDS
 # ============================================
 # Shared configuration blocks referenced via YAML anchors below.
@@ -77,10 +76,15 @@ x-authentik-env: &authentik-env
   AUTHENTIK_POSTGRESQL__HOST: "postgres"
   AUTHENTIK_POSTGRESQL__USER: "${POSTGRES_USER:-pangolin}"
   AUTHENTIK_POSTGRESQL__NAME: "authentik"
-  AUTHENTIK_POSTGRESQL__PASSWORD_FILE: "/run/secrets/postgres_password"
+  # FIX: Use __FILE suffix so Authentik reads the password directly from the
+  # Docker secret (consistent with how the postgres container itself is configured).
+  AUTHENTIK_POSTGRESQL__PASSWORD__FILE: "/run/secrets/postgres_password"
   AUTHENTIK_POSTGRESQL__PORT: "5432"
   AUTHENTIK_POSTGRESQL__USE_PGBOUNCER: "false"
-  AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY}"
+  # FIX: Read the secret key from the Docker secret file instead of the .env
+  # variable. This makes secrets/authentik_secret_key.txt the single source of
+  # truth and prevents accidental use of the placeholder value from .env.
+  AUTHENTIK_SECRET_KEY__FILE: "/run/secrets/authentik_secret_key"
 
 services:
   # ============================================
@@ -234,6 +238,12 @@ services:
     secrets:
       - postgres_password
     volumes:
+      # postgres:18 changed PGDATA to /var/lib/postgresql/18/docker and moved
+      # its declared VOLUME from /var/lib/postgresql/data to /var/lib/postgresql.
+      # The volume must be mounted at the declared VOLUME path so that Docker
+      # persists data correctly.  Mounting at the old /data sub-path would leave
+      # data in an anonymous (ephemeral) volume on postgres 18+.
+      # Reference: https://github.com/docker-library/postgres/blob/6edb0a8c/18/trixie/Dockerfile
       - postgres-data:/var/lib/postgresql
       - ./postgres/init-authentik-db.sh:/docker-entrypoint-initdb.d/init-authentik-db.sh:ro
     networks:
@@ -388,7 +398,12 @@ services:
       - "9443"
     environment:
       <<: *authentik-env
-      AUTHENTIK_POSTGRESQL__SSLMODE: "require"
+      # FIX: Changed from "require" to "prefer". The official postgres Docker image
+      # does not enable SSL by default, so "require" causes every connection attempt
+      # to fail with an SSL handshake error. Use "prefer" so Authentik connects
+      # successfully over plain TCP within the Docker network.
+      # To enforce SSL, configure postgres with ssl=on and then set this to "require".
+      AUTHENTIK_POSTGRESQL__SSLMODE: "prefer"
     secrets:
       - postgres_password
       - authentik_secret_key
@@ -446,7 +461,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *authentik-env
-      AUTHENTIK_POSTGRESQL__SSLMODE: "require"
+      # FIX: Changed from "require" to "prefer" — see note in authentik-server above.
+      AUTHENTIK_POSTGRESQL__SSLMODE: "prefer"
     secrets:
       - postgres_password
       - authentik_secret_key

@@ -4,6 +4,9 @@ This directory holds the secret files read by Docker Compose at startup.
 **Never commit actual secret files to version control** — `*.txt` files in this
 directory are excluded by `.gitignore`.
 
+> **Quickstart:** Run `scripts/init-secrets.sh` from the repository root to
+> generate all required secret files automatically.
+
 ## Required secrets by profile
 
 ### `simple` profile
@@ -27,7 +30,7 @@ All six secret files are required:
 | `grafana_oidc_client_secret.txt` | grafana | OIDC client secret for Grafana ↔ Authentik |
 | `smtp_password.txt` | pangolin-backend | SMTP password (can be empty) |
 
-## Creating secret files
+## Creating secret files manually
 
 ```bash
 # PostgreSQL password (all profiles)
@@ -61,14 +64,14 @@ chmod 600 secrets/*.txt
 
 ## Authentik secret key
 
-`authentik_secret_key.txt` is a Docker secret used by both `authentik-server` and `authentik-worker`.
-Generate it before the first start (**required for `local` and `production` profiles only**):
+`authentik_secret_key.txt` is a Docker secret consumed by both `authentik-server`
+and `authentik-worker` via the `AUTHENTIK_SECRET_KEY__FILE` environment variable.
+Authentik reads the key directly from the file path — the `AUTHENTIK_SECRET_KEY`
+variable in `.env` is **not** used and can be ignored.
+
+Generate the key before the first start (**required for `local` and `production` profiles only**):
 
 ```bash
-# Generate a cryptographically secure key (50+ characters recommended)
 echo -n "$(openssl rand -hex 50)" > secrets/authentik_secret_key.txt
 chmod 600 secrets/authentik_secret_key.txt
 ```
-
-> **Note:** The `AUTHENTIK_SECRET_KEY` variable in `.env` is still honored if set.
-> The Docker secret file takes precedence when both are present.
