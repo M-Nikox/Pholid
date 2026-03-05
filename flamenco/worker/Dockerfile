@@ -66,6 +66,7 @@ WORKDIR /flamenco
 
 COPY flamenco-worker.yaml .
 COPY entrypoint.sh /entrypoint.sh
+RUN apt-get update && apt-get install -y dos2unix && dos2unix /entrypoint.sh && rm -rf /var/lib/apt/lists/*
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
