@@ -232,7 +232,7 @@ services:
     secrets:
       - postgres_password
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
       - ./postgres/init-authentik-db.sh:/docker-entrypoint-initdb.d/init-authentik-db.sh:ro
     networks:
       - pangolin-network
@@ -616,6 +616,7 @@ services:
 # ============================================
 networks:
   pangolin-network:
+    name: pangolin-network
     driver: bridge
     ipam:
       config:
