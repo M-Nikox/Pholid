@@ -8,6 +8,25 @@ Built for reliability, reproducibility, and operational clarity.
 
 ---
 
+## Stable Release
+
+The current stable version of Pangolin is **v1.0.0**.
+
+This release represents the original fully hand-written implementation and is considered the stable baseline of the project.
+
+Work on the next major version is currently being explored in the `v2-dev` branch.
+
+### No promises on merging v2; this branch is strictly for experimentation and learning the architecture before dedicated development begins.
+
+---
+
+## Project Status
+
+| Version | Status | Notes |
+|-------|-------|------|
+| v1.x | Stable | Production-ready distributed render orchestration |
+| v2 | Prototype | Architecture experimentation and future improvements |
+
 ## Key Features
 
 - Stateless control plane architecture for resilience
