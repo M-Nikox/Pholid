@@ -16,11 +16,12 @@ Three secret files are needed:
 | `smtp_password.txt` | pangolin-backend | SMTP password (can be empty) |
 
 ### `local` and `production` profiles
-All five secret files are required:
+All six secret files are required:
 
 | File | Used by | Description |
 |---|---|---|
-| `postgres_password.txt` | postgres, pangolin-backend | PostgreSQL password |
+| `postgres_password.txt` | postgres, pangolin-backend, authentik | PostgreSQL password |
+| `authentik_secret_key.txt` | authentik-server, authentik-worker | Authentik secret key (50+ char hex string) |
 | `grafana_admin_password.txt` | grafana | Grafana admin password |
 | `oidc_client_secret.txt` | pangolin-backend | OIDC client secret for Authentik |
 | `grafana_oidc_client_secret.txt` | grafana | OIDC client secret for Grafana ↔ Authentik |
@@ -46,6 +47,9 @@ echo -n "your-oidc-client-secret" > secrets/oidc_client_secret.txt
 # OIDC client secret for Grafana (copy from Authentik after creating the Grafana application)
 echo -n "your-grafana-oidc-client-secret" > secrets/grafana_oidc_client_secret.txt
 
+# Authentik secret key (generate a cryptographically secure key, 50+ characters recommended)
+echo -n "$(openssl rand -hex 50)" > secrets/authentik_secret_key.txt
+
 # Restrict permissions so only the owner can read them
 chmod 600 secrets/*.txt
 ```
@@ -57,11 +61,14 @@ chmod 600 secrets/*.txt
 
 ## Authentik secret key
 
-`AUTHENTIK_SECRET_KEY` is passed as an environment variable (not a Docker secret) because
-Authentik reads it via its own configuration mechanism. Set it in your `.env` file
-(**required for `local` and `production` profiles only**):
+`authentik_secret_key.txt` is a Docker secret used by both `authentik-server` and `authentik-worker`.
+Generate it before the first start (**required for `local` and `production` profiles only**):
 
 ```bash
 # Generate a cryptographically secure key (50+ characters recommended)
-echo "AUTHENTIK_SECRET_KEY=$(openssl rand -hex 50)" >> .env
+echo -n "$(openssl rand -hex 50)" > secrets/authentik_secret_key.txt
+chmod 600 secrets/authentik_secret_key.txt
 ```
+
+> **Note:** The `AUTHENTIK_SECRET_KEY` variable in `.env` is still honored if set.
+> The Docker secret file takes precedence when both are present.

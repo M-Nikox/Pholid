@@ -77,7 +77,9 @@ x-authentik-env: &authentik-env
   AUTHENTIK_POSTGRESQL__HOST: "postgres"
   AUTHENTIK_POSTGRESQL__USER: "${POSTGRES_USER:-pangolin}"
   AUTHENTIK_POSTGRESQL__NAME: "authentik"
-  AUTHENTIK_POSTGRESQL__PASSWORD: "${POSTGRES_PASSWORD}"
+  AUTHENTIK_POSTGRESQL__PASSWORD_FILE: "/run/secrets/postgres_password"
+  AUTHENTIK_POSTGRESQL__PORT: "5432"
+  AUTHENTIK_POSTGRESQL__USE_PGBOUNCER: "false"
   AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY}"
 
 services:
@@ -347,6 +349,10 @@ services:
       - "9000"
     environment:
       <<: *authentik-env
+      AUTHENTIK_POSTGRESQL__SSLMODE: "prefer"
+    secrets:
+      - postgres_password
+      - authentik_secret_key
     networks:
       - pangolin-network
     depends_on:
@@ -382,6 +388,10 @@ services:
       - "9443"
     environment:
       <<: *authentik-env
+      AUTHENTIK_POSTGRESQL__SSLMODE: "require"
+    secrets:
+      - postgres_password
+      - authentik_secret_key
     networks:
       - pangolin-network
     depends_on:
@@ -404,14 +414,42 @@ services:
       - "traefik.http.routers.authentik.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-}"
       - "traefik.http.services.authentik.loadbalancer.server.port=9000"
 
+  # --- local: background task processor ---
+  authentik-worker-local:
+    image: ghcr.io/goauthentik/server:2026.2
+    container_name: pangolin-authentik-worker
+    command: worker
+    profiles: ["local"]
+    restart: unless-stopped
+    environment:
+      <<: *authentik-env
+      AUTHENTIK_POSTGRESQL__SSLMODE: "prefer"
+    secrets:
+      - postgres_password
+      - authentik_secret_key
+    networks:
+      - pangolin-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "com.pangolin.service=authentik"
+
+  # --- production: background task processor ---
   authentik-worker:
     image: ghcr.io/goauthentik/server:2026.2
     container_name: pangolin-authentik-worker
     command: worker
-    profiles: ["local", "production"]
+    profiles: ["production"]
     restart: unless-stopped
     environment:
       <<: *authentik-env
+      AUTHENTIK_POSTGRESQL__SSLMODE: "require"
+    secrets:
+      - postgres_password
+      - authentik_secret_key
     networks:
       - pangolin-network
     depends_on:
@@ -651,6 +689,8 @@ volumes:
 secrets:
   postgres_password:
     file: ./secrets/postgres_password.txt
+  authentik_secret_key:
+    file: ./secrets/authentik_secret_key.txt
   grafana_admin_password:
     file: ./secrets/grafana_admin_password.txt
   oidc_client_secret:
