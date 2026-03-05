@@ -86,3 +86,60 @@ Note: Initial Grafana database creation may take a short moment.
 ## Acknowledgments
 
 Special thanks to [yeezygambino](https://github.com/yeezygambino) for consistently testing releases and providing valuable feedback.
+
+---
+
+## Troubleshooting
+
+### Authentik fails to connect to Postgres 18 (SCRAM-SHA-256 auth error)
+
+PostgreSQL 18 uses `scram-sha-256` as its default password authentication method. If
+Authentik was set up against an older Postgres version where the user password was
+hashed with `md5`, the authentication will fail after an upgrade.
+
+**Symptoms:**
+
+- Authentik server or worker logs show:  
+  `django.db.utils.OperationalError: FATAL: password authentication failed for user "..."`
+- Or: `fe_sendauth: no password supplied`
+
+**Verify the hash method in use:**
+
+```bash
+docker compose exec postgres psql -U postgres -c \
+  "SELECT rolname, rolpassword FROM pg_authid WHERE rolname = 'pangolin';"
+```
+
+A password starting with `md5` means the old hash is still in use.
+
+**Fix — re-hash the password with SCRAM-SHA-256:**
+
+```bash
+docker compose exec postgres psql -U postgres -c \
+  "ALTER ROLE pangolin WITH PASSWORD '$(cat secrets/postgres_password.txt)';"
+```
+
+> Replace `pangolin` with your actual `POSTGRES_USER` value if you customized it.
+
+After running the command, restart the Authentik services:
+
+```bash
+docker compose restart authentik-server authentik-worker        # production
+# or
+docker compose restart authentik-server-local authentik-worker-local  # local
+```
+
+**Verify SCRAM-SHA-256 is now active:**
+
+```bash
+docker compose exec postgres psql -U postgres -c \
+  "SELECT rolname, rolpassword FROM pg_authid WHERE rolname = 'pangolin';"
+```
+
+The password value should now start with `SCRAM-SHA-256$`.
+
+**Prevent the issue on fresh installs:**
+
+Postgres 18 creates new users with SCRAM-SHA-256 by default, so this issue only
+affects databases migrated from Postgres 14–16. For new deployments the hash method
+is already correct.
