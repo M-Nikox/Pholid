@@ -238,11 +238,13 @@ services:
     secrets:
       - postgres_password
     volumes:
-      # FIX: Mount at /var/lib/postgresql/data (the actual PG data directory),
-      # not the parent /var/lib/postgresql. Mounting at the parent shadows the
-      # postgres user's home directory with an empty volume on first start, which
-      # can cause subtle permission and init-script problems.
-      - postgres-data:/var/lib/postgresql/data
+      # postgres:18 changed PGDATA to /var/lib/postgresql/18/docker and moved
+      # its declared VOLUME from /var/lib/postgresql/data to /var/lib/postgresql.
+      # The volume must be mounted at the declared VOLUME path so that Docker
+      # persists data correctly.  Mounting at the old /data sub-path would leave
+      # data in an anonymous (ephemeral) volume on postgres 18+.
+      # Reference: https://github.com/docker-library/postgres/blob/6edb0a8c/18/trixie/Dockerfile
+      - postgres-data:/var/lib/postgresql
       - ./postgres/init-authentik-db.sh:/docker-entrypoint-initdb.d/init-authentik-db.sh:ro
     networks:
       - pangolin-network
