@@ -6,13 +6,14 @@
 const notifications = (() => {
     let hasRequestedPermission = false;
     let notificationSound = null;
+    let audioContext = null;
 
     /**
      * Generate a subtle double-click notification sound
      * Uses Web Audio API to create a lower-pitched click sound
      */
     function generateNotificationSound() {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         
         // Create a buffer for our sound
         const sampleRate = audioContext.sampleRate;
@@ -53,16 +54,15 @@ const notifications = (() => {
      */
     function playSound() {
         try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            if (!notificationSound) {
-                notificationSound = generateNotificationSound();
-            }
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (!notificationSound) notificationSound = generateNotificationSound();
 
-            const source = audioContext.createBufferSource();
-            source.buffer = notificationSound;
-            source.connect(audioContext.destination);
-            source.start(0);
+            audioContext.resume().then(() => {
+                const source = audioContext.createBufferSource();
+                source.buffer = notificationSound;
+                source.connect(audioContext.destination);
+                source.start(0);
+            });
         } catch (e) {
             console.warn('Could not play notification sound:', e);
         }
