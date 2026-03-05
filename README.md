@@ -8,24 +8,32 @@ Built for reliability, reproducibility, and operational clarity.
 
 ---
 
-## Stable Release
+## Stable Release (v1.0.0)
 
-The current stable version of Pangolin is **v1.0.0**.
+The **v1.0.0** release represents the fully hand-written, production-ready implementation of Pangolin.  
+All architecture, code, and functionality in v1 were developed manually.  
 
-This release represents the original fully hand-written implementation and is considered the stable baseline of the project.
+This release is considered the stable baseline for the project and can be used in production environments with confidence.
 
-Work on the next major version is currently being explored in the `v2-dev` branch.
+---
 
-### No promises on merging v2; this branch is strictly for experimentation and learning the architecture before dedicated development begins.
+## Experimental Prototype (v2-dev)
+
+The **v2-dev** branch is a separate experimental prototype used to explore potential improvements to the architecture.  
+It is **not production-ready** and exists solely to evaluate design ideas before any manual development begins.  
+
+No merging into the stable master is guaranteed at this stage.
 
 ---
 
 ## Project Status
 
-| Version | Status | Notes |
-|-------|-------|------|
-| v1.x | Stable | Production-ready distributed render orchestration |
-| v2 | Prototype | Architecture experimentation and future improvements |
+| Version | Branch      | Status      | Notes                                      |
+|---------|------------|------------|--------------------------------------------|
+| v1.x    | master     | Stable     | Production-ready baseline                  |
+| v2      | v2-dev     | Prototype  | Architecture experimentation              |
+
+---
 
 ## Key Features
 
