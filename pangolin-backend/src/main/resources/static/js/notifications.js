@@ -62,7 +62,7 @@ const notifications = (() => {
                 source.buffer = notificationSound;
                 source.connect(audioContext.destination);
                 source.start(0);
-            });
+            }).catch(e => console.warn('Could not play notification sound:', e));
         } catch (e) {
             console.warn('Could not play notification sound:', e);
         }
