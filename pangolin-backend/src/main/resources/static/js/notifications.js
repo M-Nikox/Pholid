@@ -62,7 +62,7 @@ const notifications = (() => {
                 source.buffer = notificationSound;
                 source.connect(audioContext.destination);
                 source.start(0);
-            });
+            }).catch(e => console.warn('Could not play notification sound:', e));
         } catch (e) {
             console.warn('Could not play notification sound:', e);
         }
@@ -142,5 +142,9 @@ const notifications = (() => {
     return { init };
 })();
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', notifications.init);
+// Auto-initialize
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', notifications.init);
+} else {
+    notifications.init();
+}
