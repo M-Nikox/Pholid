@@ -142,5 +142,9 @@ const notifications = (() => {
     return { init };
 })();
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', notifications.init);
+// Auto-initialize
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', notifications.init);
+} else {
+    notifications.init();
+}
