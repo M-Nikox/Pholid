@@ -11,6 +11,7 @@ import com.pangolin.config.PangolinProperties;
 import com.pangolin.exception.DeleteNotEnabledException;
 import com.pangolin.exception.JobConflictException;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.model.SubmissionResult;
 import com.pangolin.service.FileStorageService;
 import com.pangolin.service.JobSubmissionService;
 import com.pangolin.validation.IdValidator;
@@ -25,8 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Render job endpoints.
@@ -53,19 +53,26 @@ public class RenderController {
     }
 
     @PostMapping("/submit")
-    public ResponseEntity<Map<String, String>> submit(
+    public ResponseEntity<Map<String, Object>> submit(
             @RequestParam("blendFile") MultipartFile file,
             @RequestParam("projectName") String projectName,
             @RequestParam("frames") String frames,
             @RequestParam(value = "priority", defaultValue = "1") String priority,
-            @RequestParam(value = "computeMode", defaultValue = "gpu-cuda") String computeMode)
+            @RequestParam(value = "computeMode", defaultValue = "gpu-cuda") String computeMode,
+            @RequestParam(value = "blendFileName", required = false) String blendFileName)
             throws IOException {
 
-        String jobId = submissionService.submit(file, projectName, frames, priority, computeMode);
-        return ResponseEntity.ok(Map.of(
-                "message", "Job submitted successfully!",
-                "jobId", jobId
-        ));
+        SubmissionResult result = submissionService.submit(
+                file, projectName, frames, priority, computeMode, blendFileName);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "Job submitted successfully!");
+        body.put("jobId", result.jobId());
+        if (result.hasWarnings()) {
+            body.put("warnings", result.warnings());
+        }
+
+        return ResponseEntity.ok(body);
     }
 
     @GetMapping("/download/{jobId}")
@@ -87,7 +94,7 @@ public class RenderController {
 
     @DeleteMapping("/job/{flamencoJobId}")
     public ResponseEntity<Map<String, Object>> deleteJob(@PathVariable String flamencoJobId) {
-        if (!props.delete().enabled())              throw new DeleteNotEnabledException();
+        if (!props.delete().enabled())                     throw new DeleteNotEnabledException();
         if (!IdValidator.isValidFlamencoId(flamencoJobId)) throw new ValidationException("Invalid Flamenco job ID format.");
 
         Map<String, Object> job = flamencoClient.getJob(flamencoJobId);
