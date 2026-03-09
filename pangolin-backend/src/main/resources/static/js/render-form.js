@@ -9,6 +9,7 @@ const renderForm = (() => {
     const MAX_FILE_SIZE_BYTES = 512 * 1024 * 1024;
 
     let expectedFrames = 0;
+    let fileMode = null; // 'blend' | 'zip' | null
 
     /*
      * Initialize form handlers
@@ -20,6 +21,31 @@ const renderForm = (() => {
         
         // Listen for reset event from modal-handlers.js
         document.addEventListener('pangolin:resetForm', reset);
+
+        // Mode selector buttons
+        const selectBlendMode = document.getElementById('selectBlendMode');
+        const selectZipMode   = document.getElementById('selectZipMode');
+        const backToModeBtn   = document.getElementById('backToModeBtn');
+
+        if (selectBlendMode) selectBlendMode.addEventListener('click', () => setFileMode('blend'));
+        if (selectZipMode)   selectZipMode.addEventListener('click',   () => setFileMode('zip'));
+        if (backToModeBtn)   backToModeBtn.addEventListener('click',   () => setFileMode(null));
+
+        // Clear file button — only visible when a file is loaded
+        const clearFileBtn = document.getElementById('clearFileBtn');
+        if (clearFileBtn) {
+            clearFileBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // prevent label reopening the file picker
+                clearFile();
+            });
+        }
+
+        // Clear form button
+        const clearFormBtn = document.getElementById('clearFormBtn');
+        if (clearFormBtn) {
+            clearFormBtn.addEventListener('click', () => reset());
+        }
 
         // Submit button gold flash animation
         submitBtn.addEventListener('click', () => {
@@ -192,35 +218,28 @@ const renderForm = (() => {
      */
     function validateFile(e) {
         const file = e.target.files[0];
-        
-        // Remove any existing error messages
-        const existingError = fileInput.parentElement.querySelector('.file-error');
-        if (existingError) existingError.remove();
+
+        clearDropZoneError();
 
         const fileNameDisplay = document.getElementById('fileNameDisplay');
         const fileSizeDisplay = document.getElementById('fileSizeDisplay');
-        
+
         if (!file) {
-            if (fileNameDisplay) fileNameDisplay.textContent = 'Drop your .blend file here';
+            const defaultText = fileMode === 'zip' ? 'Drop your .zip file here' : 'Drop your .blend file here';
+            if (fileNameDisplay) fileNameDisplay.textContent = defaultText;
             if (fileSizeDisplay) fileSizeDisplay.textContent = 'Max 512MB';
             return;
         }
-        
+
         if (fileNameDisplay) fileNameDisplay.textContent = file.name;
         if (fileSizeDisplay) fileSizeDisplay.textContent = utils.formatFileSize(file.size);
 
-        // 1. CHECK FILE EXTENSION (.blend)
-        // We use toLowerCase() to catch .BLEND or .Blend variations
-        if (!file.name.toLowerCase().endsWith('.blend')) {
-            showFileError(`⚠️ Invalid file type! Please upload a .blend file.`);
-            
+        // 1. CHECK FILE EXTENSION (mode-aware)
+        const expectedExt = fileMode === 'zip' ? '.zip' : '.blend';
+        if (!file.name.toLowerCase().endsWith(expectedExt)) {
             fileInput.value = '';
-            if (fileNameDisplay) fileNameDisplay.textContent = 'Drop your .blend file here';
-            if (fileSizeDisplay) fileSizeDisplay.textContent = 'Max 512MB';
-            
-            fileInput.setCustomValidity('Invalid file type! Only .blend files are allowed.');
-            fileInput.reportValidity();
-            
+            showFileError(`⚠️ Wrong file type! Please upload a ${expectedExt} file.`);
+            fileInput.setCustomValidity(`Only ${expectedExt} files are allowed in this mode.`);
             submitBtn.disabled = true;
             return false;
         }
@@ -228,37 +247,151 @@ const renderForm = (() => {
         // 2. CHECK FILE SIZE
         if (file.size > MAX_FILE_SIZE_BYTES) {
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            showFileError(`⚠️ File too large! Maximum size is ${MAX_FILE_SIZE_MB}MB (Your file: ${fileSizeMB}MB)`);
-            
             fileInput.value = '';
-            if (fileNameDisplay) fileNameDisplay.textContent = 'Drop your .blend file here';
-            if (fileSizeDisplay) fileSizeDisplay.textContent = 'Max 512MB';
-            
+            showFileError(`⚠️ File too large! Maximum size is ${MAX_FILE_SIZE_MB}MB (Your file: ${fileSizeMB}MB)`);
             fileInput.setCustomValidity(`File too large! Maximum ${MAX_FILE_SIZE_MB}MB. Your file: ${fileSizeMB}MB`);
-            fileInput.reportValidity();
-            
             submitBtn.disabled = true;
             return false;
         }
 
-        // If we get here, the file is valid
+        // File is valid
         fileInput.setCustomValidity('');
         submitBtn.disabled = false;
-        checkComputeWarning(); // re-apply compute mode block if active
+        setClearFileBtn(true);
+        checkComputeWarning();
         return true;
     }
 
     /**
-     * Helper to show file validation errors
+     * Switch between null (mode selector), 'blend', and 'zip' modes.
+     * Controls which UI sections are visible and configures the file input.
+     */
+    function setFileMode(mode) {
+        fileMode = mode;
+
+        const selector    = document.getElementById('fileModeSelector');
+        const uploadArea  = document.getElementById('fileUploadArea');
+        const blendNameRow = document.getElementById('blendFileNameRow');
+        const dropZoneIcon = document.getElementById('dropZoneIcon');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+
+        if (mode === null) {
+            // Back to mode selection
+            if (selector)   selector.style.display   = '';
+            if (uploadArea) uploadArea.style.display  = 'none';
+            clearFile();
+            return;
+        }
+
+        // Show upload area, hide selector
+        if (selector)   selector.style.display   = 'none';
+        if (uploadArea) uploadArea.style.display  = '';
+
+        if (mode === 'zip') {
+            fileInput.accept = '.zip';
+            if (blendNameRow)   blendNameRow.style.display  = '';
+            if (dropZoneIcon)   dropZoneIcon.textContent     = '🗂️';
+            if (fileNameDisplay) fileNameDisplay.textContent = 'Drop your .zip project here';
+        } else {
+            fileInput.accept = '.blend';
+            if (blendNameRow)   blendNameRow.style.display  = 'none';
+            if (dropZoneIcon)   dropZoneIcon.textContent     = '🎨';
+            if (fileNameDisplay) fileNameDisplay.textContent = 'Drop your .blend file here';
+        }
+
+        if (fileSizeDisplay) fileSizeDisplay.textContent = 'Max 512MB';
+        clearDropZoneError();
+        setClearFileBtn(false);
+    }
+
+    /**
+     * Show non-blocking backend warnings (e.g. absolute paths detected in zip).
+     * Displayed in orange below the drop zone, auto-dismisses after 10s.
+     */
+    function showSubmitWarnings(warnings) {
+        // Remove any existing warning banner
+        const existing = document.getElementById('submitWarningBanner');
+        if (existing) existing.remove();
+
+        const banner = document.createElement('div');
+        banner.id = 'submitWarningBanner';
+        banner.style.cssText = [
+            'background:rgba(var(--pangolin-orange-rgb),0.1)',
+            'border:1px solid rgba(var(--pangolin-orange-rgb),0.35)',
+            'border-radius:10px',
+            'padding:10px 14px',
+            'font-size:0.8rem',
+            'font-weight:600',
+            'color:var(--pangolin-orange)',
+            'margin-top:8px',
+            'line-height:1.5',
+        ].join(';');
+
+        banner.textContent = '⚠ ' + warnings.join(' ');
+
+        const uploadArea = document.getElementById('fileUploadArea');
+        const submitRow  = document.querySelector('#renderForm .flex.gap-3');
+        const anchor     = uploadArea || submitRow;
+        if (anchor) anchor.insertAdjacentElement('afterend', banner);
+
+        setTimeout(() => banner.remove(), 10000);
+    }
+
+    /**
+     * Show a file validation error using the drop zone itself — no layout shift.
      */
     function showFileError(message) {
-        const error = document.createElement('div');
-        error.className = 'file-error'; // Renamed from file-size-error to be generic
-        error.style.color = '#dc3545'; // Bootstrap danger color or custom red
-        error.style.marginTop = '5px';
-        error.style.fontSize = '0.9em';
-        error.textContent = message;
-        fileInput.parentElement.appendChild(error);
+        setClearFileBtn(false);
+        const dropZone = document.getElementById('dropZone');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+        if (!dropZone) return;
+
+        dropZone.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+        dropZone.style.background  = 'rgba(239, 68, 68, 0.04)';
+
+        if (fileNameDisplay) {
+            fileNameDisplay.textContent   = message;
+            fileNameDisplay.style.color   = '#ef4444';
+            fileNameDisplay.style.opacity = '1';
+        }
+        if (fileSizeDisplay) {
+            fileSizeDisplay.textContent   = 'Drop a file or click to browse';
+            fileSizeDisplay.style.color   = '#ef4444';
+            fileSizeDisplay.style.opacity = '0.7';
+        }
+    }
+
+    /**
+     * Reset the drop zone to its default appearance.
+     */
+    function clearDropZoneError() {
+        const dropZone = document.getElementById('dropZone');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+        if (!dropZone) return;
+
+        dropZone.style.borderColor = '';
+        dropZone.style.background  = '';
+
+        if (fileNameDisplay) {
+            fileNameDisplay.style.color   = '';
+            fileNameDisplay.style.opacity = '';
+        }
+        if (fileSizeDisplay) {
+            fileSizeDisplay.style.color   = '';
+            fileSizeDisplay.style.opacity = '';
+        }
+    }
+
+    /**
+     * Show or hide the clear file button inside the drop zone.
+     */
+    function setClearFileBtn(visible) {
+        const btn = document.getElementById('clearFileBtn');
+        if (!btn) return;
+        btn.style.display = visible ? 'flex' : 'none';
     }
 
     /**
@@ -301,51 +434,61 @@ const renderForm = (() => {
         
         // Check if file exists
         if (!file) {
-             fileInput.setCustomValidity('Please select a .blend file.');
-             fileInput.reportValidity();
-             resetButtonState(originalButtonText);
-             return;
-        }
-
-        // Check extension again (Safety check)
-        if (!file.name.toLowerCase().endsWith('.blend')) {
-            fileInput.setCustomValidity('Invalid file type! Only .blend files are allowed.');
-            fileInput.reportValidity();
+            const label = fileMode === 'zip' ? '.zip' : '.blend';
+            showFileError(`⚠️ Please select a ${label} file before submitting.`);
             resetButtonState(originalButtonText);
             return;
         }
 
-        // Check size again
+        // Zip mode: require blendFileName
+        if (fileMode === 'zip') {
+            const blendFileNameInput = document.getElementById('blendFileName');
+            if (!blendFileNameInput || !blendFileNameInput.value.trim()) {
+                blendFileNameInput.focus();
+                resetButtonState(originalButtonText);
+                return;
+            }
+        }
+
+        // Safety: re-check extension and size
+        const expectedExt = fileMode === 'zip' ? '.zip' : '.blend';
+        if (!file.name.toLowerCase().endsWith(expectedExt)) {
+            showFileError(`⚠️ Wrong file type! Expected a ${expectedExt} file.`);
+            resetButtonState(originalButtonText);
+            return;
+        }
         if (file.size > MAX_FILE_SIZE_BYTES) {
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            fileInput.setCustomValidity(`File too large! Maximum ${MAX_FILE_SIZE_MB}MB. Your file: ${fileSizeMB}MB`);
-            fileInput.reportValidity();
+            showFileError(`⚠️ File too large! Maximum ${MAX_FILE_SIZE_MB}MB. Your file: ${fileSizeMB}MB`);
             resetButtonState(originalButtonText);
             return;
         }
-
-        // Prepare UI for upload: button already says 'Uploading...'
 
         // Submit to backend
         const formData = new FormData(form);
-        
+
         try {
-            const response = await fetch('/api/render/submit', { 
-                method: 'POST', 
-                body: formData 
+            const response = await fetch('/api/render/submit', {
+                method: 'POST',
+                body: formData
             });
-            
+
             const data = await response.json();
-            
+
             if (response.ok && data.jobId) {
                 const jobId = data.jobId;
                 const projectName = document.getElementById('projectName').value;
-                
+
                 // Fire events for active-sessions and notifications modules
                 document.dispatchEvent(new CustomEvent('pangolin:startPolling', {
                     detail: { jobId, expectedFrames, projectName }
                 }));
                 document.dispatchEvent(new CustomEvent('pangolin:jobSubmitted'));
+
+                // Show warnings before resetting if the backend found absolute paths
+                if (data.warnings && data.warnings.length > 0) {
+                    showSubmitWarnings(data.warnings);
+                }
 
                 // Auto-reset the form so it's ready for the next job
                 reset();
@@ -377,25 +520,44 @@ const renderForm = (() => {
     }
 
     /**
-     * Reset form to initial state
+     * Clear only the blend file, restoring the drop zone to its default state.
+     */
+    function clearFile() {
+        fileInput.value = '';
+        fileInput.setCustomValidity('');
+
+        // Reset drop zone text to the correct default for the current mode
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+        if (fileNameDisplay) {
+            fileNameDisplay.textContent = fileMode === 'zip'
+                ? 'Drop your .zip project here'
+                : 'Drop your .blend file here';
+        }
+        if (fileSizeDisplay) fileSizeDisplay.textContent = 'Max 512MB';
+
+        clearDropZoneError();
+        setClearFileBtn(false);
+        submitBtn.disabled = false;
+    }
+
+    /**
+     * Reset form to initial state, returning to the mode selector.
      */
     function reset() {
         form.reset();
-
-        // Reset file label
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
-        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
-        if (fileNameDisplay) fileNameDisplay.textContent = 'Drop your .blend file here';
-        if (fileSizeDisplay) fileSizeDisplay.textContent = 'Max 512MB';
-
-        // Remove any file error messages
-        const existingError = fileInput.parentElement.querySelector('.file-error');
-        if (existingError) existingError.remove();
 
         fileInput.setCustomValidity('');
         expectedFrames = 0;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Launch Render Session';
+
+        // Return to mode selector — setFileMode(null) handles all display cleanup
+        setFileMode(null);
+
+        // Remove any warning banners
+        const banner = document.getElementById('submitWarningBanner');
+        if (banner) banner.remove();
     }
 
     return { init, reset };
