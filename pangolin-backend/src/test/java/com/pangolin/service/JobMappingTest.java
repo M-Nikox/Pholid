@@ -36,11 +36,15 @@ class JobMappingTest {
                 new PangolinProperties.ProjectName(20),
                 new PangolinProperties.File(512),
                 new PangolinProperties.Http(10000, 30000),
-                new PangolinProperties.Delete(false)
+                new PangolinProperties.Delete(false),
+                new PangolinProperties.Zip(2048, 10000)
         );
+        FileStorageService mockStorage = mock(FileStorageService.class);
+        ZipSubmissionService zipService = new ZipSubmissionService(props, mockStorage);
         service = new JobSubmissionService(
                 mock(FlamencoClient.class),
-                mock(FileStorageService.class),
+                mockStorage,
+                zipService,
                 props
         );
     }

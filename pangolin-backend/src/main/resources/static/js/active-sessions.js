@@ -143,10 +143,10 @@ const activeSessions = (() => {
         }
 
         container.innerHTML = jobs.map((job, index) => {
-            const displayName = (job.name || 'Untitled').replace(/^Pangolin_/, '');
+            const displayName = utils.escapeHtml((job.name || 'Untitled').replace(/^Pangolin_/, ''));
             const statusColor = job.status === 'completed' ? '#22c55e' : job.status === 'failed' ? '#ef4444' : job.status === 'canceled' ? '#f97316' : '#6b7280';
             const statusLabel = job.status === 'completed' ? 'Completed' : job.status === 'failed' ? 'Failed' : job.status === 'canceled' ? 'Canceled' : job.status;
-            const pangolinId = job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id;
+            const pangolinId = utils.escapeHtml(job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id);
             const staggerDelay = (index * 18) + 'ms';
 
             // Determine if delete button should appear
@@ -314,7 +314,7 @@ const activeSessions = (() => {
             : 0;
 
         const statusInfo = getStatusInfo(job.status);
-        const displayName = job.name.replace(/^Pangolin_/, '');
+        const displayName = utils.escapeHtml(job.name.replace(/^Pangolin_/, ''));
         const eta = calculateETA(job);
 
         card.innerHTML = `
@@ -334,7 +334,7 @@ const activeSessions = (() => {
             <!-- Progress Bar -->
             <div class="mb-3">
                 <div class="h-2 rounded-full overflow-hidden" style="background: var(--bg-secondary);">
-                    <div class="job-progress-bar h-full bg-gradient-to-r from-pangolin-orange to-orange-400 transition-all duration-500 relative"
+                    <div class="job-progress-bar job-progress-fill h-full transition-all duration-500 relative"
                         style="width: ${progress}%">
                         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
                     </div>
@@ -343,14 +343,14 @@ const activeSessions = (() => {
                     <span class="job-frames-text text-xs" style="color: var(--text-secondary);">
                         ${job.steps_completed} / ${job.steps_total} frames
                     </span>
-                    <span class="job-percent-text text-xs font-semibold text-pangolin-orange">
+                    <span class="job-percent-text text-xs font-semibold" style="color:var(--pangolin-orange)">
                         ${progress}%
                     </span>
                 </div>
             </div>
 
             <!-- ETA -->
-            <div class="job-eta-text text-sm mb-3 text-pangolin-orange font-medium" ${eta ? '' : 'style="display:none"'}>
+            <div class="job-eta-text text-sm mb-3 font-medium" style="color:var(--pangolin-orange)" ${eta ? '' : 'style="display:none"'}>
                 ⏱️ ${eta || ''}
             </div>
 
@@ -629,7 +629,7 @@ const activeSessions = (() => {
     // Appends an orange warning line to a card (used for 207 partial failure)
     function showCardWarning(card, message) {
         const warn = document.createElement('div');
-        warn.style.cssText = 'font-size:10px;color:#f97316;padding:4px 8px;opacity:0.85;';
+        warn.style.cssText = 'font-size:10px;color:var(--pangolin-orange);padding:4px 8px;opacity:0.85;';
         warn.textContent = '⚠ ' + message;
         card.appendChild(warn);
     }
@@ -674,10 +674,10 @@ const activeSessions = (() => {
         if (!container) return;
 
         jobs.forEach((job, index) => {
-            const displayName = (job.name || 'Untitled').replace(/^Pangolin_/, '');
+            const displayName = utils.escapeHtml((job.name || 'Untitled').replace(/^Pangolin_/, ''));
             const statusColor = job.status === 'completed' ? '#22c55e' : job.status === 'failed' ? '#ef4444' : job.status === 'canceled' ? '#f97316' : '#6b7280';
             const statusLabel = job.status === 'completed' ? 'Completed' : job.status === 'failed' ? 'Failed' : job.status === 'canceled' ? 'Canceled' : job.status;
-            const pangolinId = job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id;
+            const pangolinId = utils.escapeHtml(job.metadata ? (job.metadata['pangolin.job_id'] || job.id) : job.id);
             const staggerDelay = (index * 18) + 'ms';
 
             const showDelete = ['completed', 'failed', 'canceled'].includes(job.status);
