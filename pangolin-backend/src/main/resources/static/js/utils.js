@@ -220,6 +220,22 @@ const utils = {
     },
 
     /**
+     * Escape HTML special characters to prevent XSS when inserting
+     * untrusted strings into innerHTML.
+     * @param {string} str
+     * @returns {string}
+     */
+    escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    /**
      * Convert megabytes to bytes
      * @param {number} mb - Size in megabytes
      * @returns {number} Size in bytes
