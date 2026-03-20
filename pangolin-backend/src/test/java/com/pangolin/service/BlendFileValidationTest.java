@@ -9,6 +9,7 @@ package com.pangolin.service;
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.config.PangolinProperties;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.job.JobRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -44,7 +45,10 @@ class BlendFileValidationTest {
                 new PangolinProperties.File(512),
                 new PangolinProperties.Http(10000, 30000),
                 new PangolinProperties.Delete(false),
-                new PangolinProperties.Zip(2048, 10000)
+                new PangolinProperties.Zip(2048, 10000),
+                new PangolinProperties.Auth(false, "pangolin-admins", "ADMIN", null),
+                new PangolinProperties.Webhook(null),
+                new PangolinProperties.Quota(5, 20)
         );
         FileStorageService mockStorage = mock(FileStorageService.class);
         ZipSubmissionService zipService = new ZipSubmissionService(props, mockStorage);
@@ -52,7 +56,10 @@ class BlendFileValidationTest {
                 mock(FlamencoClient.class),
                 mockStorage,
                 zipService,
-                props
+                props,
+                mock(JobRepository.class),
+                mock(UserContextService.class),
+                mock(QuotaService.class)
         );
     }
 

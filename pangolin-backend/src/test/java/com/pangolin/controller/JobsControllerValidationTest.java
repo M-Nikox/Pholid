@@ -8,6 +8,8 @@ package com.pangolin.controller;
 
 import com.pangolin.client.FlamencoClient;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.job.JobRepository;
+import com.pangolin.service.UserContextService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,7 +22,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests limit/offset validation in JobsController.getPreviousJobs().
+ * Tests limit/offset validation in JobsController.getJobHistory().
  */
 class JobsControllerValidationTest {
 
@@ -32,25 +34,37 @@ class JobsControllerValidationTest {
         flamencoClient = mock(FlamencoClient.class);
         when(flamencoClient.getJobs(anyString(), anyInt(), anyInt()))
                 .thenReturn(java.util.Map.of());
-        controller = new JobsController(flamencoClient, mock(RestClient.class));
+
+        UserContextService userContextService = mock(UserContextService.class);
+        when(userContextService.isAdmin()).thenReturn(true);
+        when(userContextService.getCurrentUsername()).thenReturn("testuser");
+
+        JobRepository jobRepository = mock(JobRepository.class);
+        when(jobRepository.findAllHistory(any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+        when(jobRepository.findHistoryByUser(anyString(), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        controller = new JobsController(flamencoClient, mock(RestClient.class),
+                userContextService, jobRepository);
     }
 
     // ── Limit ───────────────────────────────────────────────────────────────
 
     @Test
     void limitAtMinimum_accepted() {
-        assertThatNoException().isThrownBy(() -> controller.getPreviousJobs(1, 0));
+        assertThatNoException().isThrownBy(() -> controller.getJobHistory(1, 0));
     }
 
     @Test
     void limitAtMaximum_accepted() {
-        assertThatNoException().isThrownBy(() -> controller.getPreviousJobs(200, 0));
+        assertThatNoException().isThrownBy(() -> controller.getJobHistory(200, 0));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, -1, 201, 1000})
     void limitOutOfRange_throwsValidationException(int limit) {
-        assertThatThrownBy(() -> controller.getPreviousJobs(limit, 0))
+        assertThatThrownBy(() -> controller.getJobHistory(limit, 0))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("200");
     }
@@ -59,17 +73,17 @@ class JobsControllerValidationTest {
 
     @Test
     void offsetZero_accepted() {
-        assertThatNoException().isThrownBy(() -> controller.getPreviousJobs(50, 0));
+        assertThatNoException().isThrownBy(() -> controller.getJobHistory(50, 0));
     }
 
     @Test
     void offsetPositive_accepted() {
-        assertThatNoException().isThrownBy(() -> controller.getPreviousJobs(50, 100));
+        assertThatNoException().isThrownBy(() -> controller.getJobHistory(50, 100));
     }
 
     @Test
     void negativeOffset_throwsValidationException() {
-        assertThatThrownBy(() -> controller.getPreviousJobs(50, -1))
+        assertThatThrownBy(() -> controller.getJobHistory(50, -1))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("0");
     }

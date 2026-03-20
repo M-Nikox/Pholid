@@ -30,15 +30,18 @@ class FileStorageServiceTest {
     @BeforeEach
     void setUp() {
         PangolinProperties props = new PangolinProperties(
-                new PangolinProperties.Manager("http://flamenco-manager:8080"),
-                new PangolinProperties.Storage(tempDir.toString()),
-                new PangolinProperties.Frames(3500, 100000),
-                new PangolinProperties.Download(5000),
-                new PangolinProperties.ProjectName(100),
-                new PangolinProperties.File(512),
-                new PangolinProperties.Http(10000, 30000),
-                new PangolinProperties.Delete(false),
-                new PangolinProperties.Zip(2048, 10000)
+        new PangolinProperties.Manager("http://flamenco-manager:8080"),
+        new PangolinProperties.Storage(tempDir.toString()),
+        new PangolinProperties.Frames(3500, 100000),
+        new PangolinProperties.Download(5000),
+        new PangolinProperties.ProjectName(100),
+        new PangolinProperties.File(512),
+        new PangolinProperties.Http(10000, 30000),
+        new PangolinProperties.Delete(false),
+        new PangolinProperties.Zip(2048, 10000),
+        new PangolinProperties.Auth(false, "pangolin-admins", "ADMIN", null),
+        new PangolinProperties.Webhook(null),
+        new PangolinProperties.Quota(5, 20)
         );
         service = new FileStorageService(props);
     }
