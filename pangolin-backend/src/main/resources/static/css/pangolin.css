@@ -213,8 +213,8 @@ header button.glass-card:active {
  */
 .pangolin-logo-header,
 .pangolin-logo-guide {
-    -webkit-mask-image: url('pangolin.svg');
-    mask-image: url('pangolin.svg');
+    -webkit-mask-image: url('/svg/pangolin.svg');
+    mask-image: url('/svg/pangolin.svg');
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
     -webkit-mask-size: contain;
@@ -609,4 +609,70 @@ header button.glass-card:active {
 /* Flatten the bottom corners of the summary when the menu is open */
 .pangolin-collapsible[open] summary {
     border-radius: 12px 12px 0 0;
+}
+
+/* Fix for the render form button not refreshing */
+#renderForm button[type="submit"] {
+    background: var(--pangolin-orange);
+    color: var(--accent-text);
+    transition: background 0.3s ease, transform 0.1s ease;
+}
+
+#renderForm button[type="submit"].btn-success {
+    background: #16a34a !important; /* Success Green */
+}
+
+/* ===== AVATAR DROPDOWN ===== */
+
+.avatar-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 100;
+    width: 240px;
+    border-radius: 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+}
+
+.avatar-dropdown--open {
+    display: block;
+}
+
+.avatar-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.avatar-dropdown-item:hover {
+    background: var(--bg-secondary);
+}
+
+.avatar-dropdown-item--danger {
+    color: #ef4444;
+    opacity: 0.75;
+}
+
+.avatar-dropdown-item--danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    opacity: 1;
 }
