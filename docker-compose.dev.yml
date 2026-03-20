@@ -1,0 +1,337 @@
+# ============================================================
+# DEV COMPOSE - HTTP only, no Traefik, direct port access
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Services:
+#   Pangolin backend  →  http://localhost:8080
+#   Keycloak          →  http://localhost:8180
+#   Grafana           →  http://localhost:3000
+#   Flamenco manager  →  http://localhost:8280
+#   Prometheus        →  http://localhost:9090
+#
+# No Traefik, no TLS, no domain needed.
+# Keycloak runs in dev mode (HTTP allowed, no HTTPS enforcement).
+#
+# When auth is enabled, set these in .env:
+#   OIDC_ISSUER_URI=http://localhost:8180/realms/pangolin
+#   KEYCLOAK_HOSTNAME=localhost:8180
+# ============================================================
+
+services:
+
+  # ============================================================
+  # POSTGRESQL
+  # ============================================================
+  postgresql:
+    image: postgres:17
+    container_name: pangolin-postgresql
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=${KEYCLOAK_PG_PASS}
+      - PANGOLIN_POSTGRES_DB=${POSTGRES_DB:-pangolin}
+      - PANGOLIN_POSTGRES_USER=${POSTGRES_USER:-pangolin}
+      - PANGOLIN_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+      - ./postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    ports:
+      - "5432:5432"   # optional: expose if you want to inspect DB directly
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================
+  # KEYCLOAK - dev mode (HTTP, no TLS enforcement)
+  # ============================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: pangolin-keycloak
+    restart: unless-stopped
+    # start-dev enables HTTP and disables strict HTTPS redirect requirements
+    command: start-dev
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgresql:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=${KEYCLOAK_PG_PASS}
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER:-admin}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_HOSTNAME=http://localhost:8180
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
+      - KC_HOSTNAME_STRICT=false
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    ports:
+      - "8180:8080"
+    networks:
+      - pangolin-network
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ============================================================
+  # FLAMENCO MANAGER
+  # ============================================================
+  flamenco-manager:
+    build:
+      context: ./flamenco/manager
+      dockerfile: Dockerfile
+    container_name: pangolin-flamenco-manager
+    hostname: flamenco-manager
+    restart: unless-stopped
+    ports:
+      - "8280:8080"
+    volumes:
+      - flamenco-shared:/shared
+      - ./flamenco/manager/flamenco-manager.yaml:/flamenco-3.8.2-linux-amd64/flamenco-manager.yaml:ro
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/v3/configuration"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================
+  # FLAMENCO WORKERS
+  # ============================================================
+  flamenco-worker:
+    build:
+      context: ./flamenco/worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      flamenco-manager:
+        condition: service_healthy
+    networks:
+      - pangolin-network
+    environment:
+      - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+    runtime: nvidia
+    volumes:
+      - flamenco-shared:/shared
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+    deploy:
+      replicas: ${WORKER_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: ${WORKER_CPU_LIMIT:-4.0}
+          memory: ${WORKER_MEM_LIMIT:-8G}
+        reservations:
+          cpus: ${WORKER_CPU_RESERVE:-2.0}
+          memory: ${WORKER_MEM_RESERVE:-4G}
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
+
+  # ============================================================
+  # PANGOLIN BACKEND
+  # ============================================================
+  pangolin-backend:
+    build:
+      context: ./pangolin-backend
+      dockerfile: Dockerfile
+    container_name: pangolin-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - flamenco-shared:/shared
+      - pangolin-userdata:/userdata
+    networks:
+      - pangolin-network
+    environment:
+      - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
+      - STORAGE_ROOT=/shared
+      - USERDATA_ROOT=/userdata
+      - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false}
+      - PANGOLIN_AUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
+      - POSTGRES_DB=${POSTGRES_DB:-pangolin}
+      - POSTGRES_USER=${POSTGRES_USER:-pangolin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # When auth is enabled, point at localhost Keycloak
+      # - OIDC_ISSUER_URI=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-pangolin}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - OIDC_LOGOUT_URI=http://localhost:8180/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/logout
+      - SPRING_FLYWAY_ENABLED=true
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration
+      - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
+      - SPRING_FLYWAY_BASELINE_VERSION=0
+      - MANAGEMENT_HEALTH_MAIL_ENABLED=false
+    depends_on:
+      flamenco-manager:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      # When PANGOLIN_AUTH_ENABLED=false you can comment out the keycloak dependency
+      # below to skip its 90s startup wait and iterate faster.
+      keycloak:
+        condition: service_healthy
+
+  # ============================================================
+  # PROMETHEUS
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:v3.10.0
+    container_name: pangolin-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}'
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================
+  # GRAFANA
+  # ============================================================
+  grafana:
+    image: grafana/grafana:12.3.4
+    container_name: pangolin-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000/
+      # Keycloak OIDC - only active once you set up the grafana client in Keycloak
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=${GRAFANA_OAUTH_ENABLED:-false}
+      - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GRAFANA_OIDC_CLIENT_ID:-grafana}
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GRAFANA_OIDC_CLIENT_SECRET:-}
+      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid email profile
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=http://localhost:8180/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/userinfo
+      - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=contains(groups[*], 'pangolin-admins') && 'Admin' || 'Viewer'
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - pangolin-network
+    depends_on:
+      - prometheus
+
+  # ============================================================
+  # cADVISOR
+  # ============================================================
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.56.2
+    container_name: pangolin-cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - pangolin-network
+    command:
+      - '--housekeeping_interval=30s'
+      - '--docker_only=true'
+
+  # ============================================================
+  # FLAMENCO EXPORTER
+  # ============================================================
+  flamenco-exporter:
+    build:
+      context: ./monitoring/flamenco-exporter
+      dockerfile: Dockerfile
+    container_name: pangolin-flamenco-exporter
+    restart: unless-stopped
+    expose:
+      - "9090"
+    environment:
+      - FLAMENCO_API_URL=http://flamenco-manager:8080
+      - PROMETHEUS_URL=http://prometheus:9090
+      - EXPORTER_PORT=9090
+      - SCRAPE_INTERVAL=${EXPORTER_SCRAPE_INTERVAL:-15}
+      - WORKER_SCRAPE_INTERVAL=${EXPORTER_WORKER_SCRAPE_INTERVAL:-15}
+      - TASK_SCRAPE_INTERVAL=${EXPORTER_TASK_SCRAPE_INTERVAL:-60}
+      - TASK_SAMPLE_SIZE_MIN=${EXPORTER_TASK_SAMPLE_MIN:-3}
+      - TASK_SAMPLE_SIZE_MAX=${EXPORTER_TASK_SAMPLE_MAX:-5}
+      - MAX_JOB_COUNT_THRESHOLD=${EXPORTER_MAX_JOB_THRESHOLD:-100}
+      - REQUEST_TIMEOUT=${EXPORTER_REQUEST_TIMEOUT:-10}
+      - LOG_LEVEL=${EXPORTER_LOG_LEVEL:-INFO}
+    networks:
+      - pangolin-network
+    depends_on:
+      flamenco-manager:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+
+  # ============================================================
+  # GPU EXPORTER
+  # ============================================================
+  gpu-exporter:
+    build:
+      context: ./monitoring/gpu-exporter
+      dockerfile: Dockerfile
+    container_name: pangolin-gpu-exporter
+    restart: unless-stopped
+    runtime: nvidia
+    expose:
+      - "9091"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - EXPORTER_PORT=9091
+      - SCRAPE_INTERVAL=${GPU_EXPORTER_SCRAPE_INTERVAL:-5}
+      - LOG_LEVEL=${GPU_EXPORTER_LOG_LEVEL:-INFO}
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+    networks:
+      - pangolin-network
+    depends_on:
+      - prometheus
+
+networks:
+  pangolin-network:
+    name: pangolin-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  flamenco-shared:
+    driver: local
+  postgresql-data:
+  prometheus-data:
+  grafana-data:
+  pangolin-userdata:
