@@ -21,12 +21,12 @@ All URLs are HTTP, no domain or TLS required.
 
 **`false` (default):**
 - All requests are permitted without authentication
-- Spring never contacts Keycloak at startup — the app starts even if Keycloak is down
+- Spring never contacts Keycloak at startup, the app starts even if Keycloak is down
 - `getCurrentUsername()` returns `"anonymous"`, `isAdmin()` returns `true`
 
 **`true`:**
 - All endpoints require authentication except health checks, static assets, and error pages
-- Spring validates OIDC configuration at startup — if Keycloak is unreachable or
+- Spring validates OIDC configuration at startup, if Keycloak is unreachable or
   credentials are wrong, Pangolin **will fail to start**
 - Login is recorded in the audit log
 - Admin access requires membership in the `pangolin-admins` Keycloak group
@@ -44,7 +44,7 @@ Keycloak is fully configured and all client secrets are in `.env`.
 docker compose -f docker-compose.dev.yml up -d postgresql keycloak
 ```
 
-Wait for Keycloak to be healthy — first boot takes 60–90 seconds:
+Wait for Keycloak to be healthy, first boot takes 60–90 seconds:
 
 ```bash
 docker compose -f docker-compose.dev.yml logs -f keycloak
@@ -79,7 +79,7 @@ subsequent step is performed inside this realm.
 ## Step 3 — Create the Pangolin Client
 
 This client handles user login for the Spring Boot backend. The client ID must
-be exactly `pangolin` — it is hardcoded in `SecurityConfig.java` as part of the
+be exactly `pangolin` - it is hardcoded in `SecurityConfig.java` as part of the
 logout URL.
 
 ### Create the client
@@ -190,9 +190,9 @@ Grafana's role mapping expression also reads the `groups` claim.
 
 1. Left sidebar → **Users** → **Add user**
 2. Fill in:
-   - **Username:** your choice — stored in job records and shown in audit log
+   - **Username:** your choice, stored in job records and shown in audit log
    - **Email:** your choice
-   - **First name / Last name:** your choice — shown in the Pangolin avatar dropdown
+   - **First name / Last name:** your choice, shown in the Pangolin avatar dropdown
    - **Email verified:** On
 3. Click **Create**
 4. **Credentials** tab → **Set password** → enter a password → **Temporary: Off** → **Save password**
