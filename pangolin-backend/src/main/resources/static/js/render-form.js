@@ -495,10 +495,10 @@ const renderForm = (() => {
 
                 // Show success feedback on the button after reset, then restore
                 submitBtn.textContent = '✅ Submitted!';
-                submitBtn.style.background = '#16a34a';
+                submitBtn.classList.add('btn-success');
                 submitBtn.disabled = true;
                 setTimeout(() => {
-                    submitBtn.style.background = '';
+                    submitBtn.classList.remove('btn-success'); // Reverts to the theme's color
                     submitBtn.textContent = 'Launch Render Session';
                     submitBtn.disabled = false;
                 }, 2500);
