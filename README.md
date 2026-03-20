@@ -1,102 +1,161 @@
-# Pangolin
+<p align="center">
+  <img src="assets\pangolin-readme.svg" width="180" alt="Pangolin Logo">
+</p>
 
-## Distributed GPU-Enabled Render Orchestrator
+<h1 align="center">Pangolin</h1>
+<h3 align="center">Distributed GPU-Accelerated Render Orchestrator</h3>
 
-Pangolin is a Docker-native, stateless render orchestration platform designed for GPU-accelerated Blender workloads. It provides containerized job isolation, distributed worker coordination, and real-time observability with sub-1-minute deployment.
-
-Built for reliability, reproducibility, and operational clarity.
+<p align="center">
+  <a href="https://github.com/M-Nikox/Pangolin/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pangolin?label=stable&color=4c9a2a" alt="Stable Release"></a>
+  <a href="https://github.com/M-Nikox/Pangolin/tree/v2"><img src="https://img.shields.io/badge/v2--dev-in%20development-orange" alt="v2 Dev"></a>
+  <a href="https://github.com/M-Nikox/Pangolin/actions"><img src="https://github.com/M-Nikox/Pangolin/actions/workflows/<your-workflow>.yml/badge.svg?branch=v2" alt="Tests"></a>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
+  <img src="https://img.shields.io/badge/blender-GPU%20rendering-e87d0d" alt="Blender">
+  <img src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white" alt="Docker">
+</p>
 
 ---
 
-## Stable Release (v1.0.0)
+Pangolin is a Docker-native render orchestration platform for GPU-accelerated Blender workloads. It handles multi-user job submission, GPU worker coordination, and real-time observability in a single deployable stack.
 
-The **v1.0.0** release represents the fully hand-written, production-ready implementation of Pangolin.  
-All architecture, code, and functionality in v1 were developed manually.  
-
-This release is considered the stable baseline for the project and can be used in production environments with confidence.
+Free and open source, forever.
 
 ---
 
-## Experimental Prototype (v2-dev)
+## Stable Release — v1.x
 
-The **v2-dev** branch is a separate experimental prototype used to explore potential improvements to the architecture.  
-It is **not production-ready** and exists solely to evaluate design ideas before any manual development begins.  
+The v1.x release is a fully hand-written, production-ready single-user render farm manager. No authentication, no dependencies beyond Docker, just deploy and render.
 
-No merging into the stable master is guaranteed at this stage.
+```bash
+git checkout master
+cp .env.example .env   # fill in your values
+docker compose up -d --build
+```
+
+Deployment completes in under one minute. Pangolin will be available at `http://localhost:8080`.
+
+> Initial Grafana database creation may take a short moment on first boot.
+
+---
+
+## v2 — Multi-User Auth (In Development)
+
+v2 introduces full multi-user support via Keycloak SSO, per-user job isolation, quota enforcement, avatar profiles, and a complete Prometheus + Grafana observability stack.
+
+**No v2 release will be made until the implementation is fully tested and stable.**
+
+### Current State
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| HTTP dev mode | ✅ Working | Full auth stack functional, see quick start below |
+| HTTPS prod mode | 🚧 In testing | Traefik + TLS, not yet validated end-to-end |
+
+### What's working in v2 dev mode
+
+- Keycloak login and logout with session management
+- Group-based admin detection (`pangolin-admins`)
+- User profiles - avatar upload, full name and email from OIDC token
+- Notification preferences
+- Job submission with per-user filtering and quota enforcement
+- Paginated job history
+- Admin panel with audit log and farm status
+- Full Prometheus + Grafana observability stack
+
+### v2 Quick Start (HTTP dev mode)
+
+```bash
+git checkout v2
+cp .env.example .env   # fill in your values
+docker compose -f docker-compose.dev.yml up -d postgresql keycloak
+```
+
+Wait ~90 seconds for Keycloak to be healthy, then complete the Keycloak setup:
+
+📖 **[KEYCLOAK_SETUP.md](KEYCLOAK_SETUP.md)**
+
+Once setup is complete:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+| Service | URL |
+|---------|-----|
+| Pangolin | `http://localhost:8080` |
+| Keycloak | `http://localhost:8180` |
+| Grafana | `http://localhost:3000` |
+| Flamenco | `http://localhost:8280` |
+| Prometheus | `http://localhost:9090` |
+
+---
+
+## Architecture
+
+Pangolin separates responsibilities cleanly across distinct services:
+
+- **Control plane** - Spring Boot backend handles job submission, quota enforcement, user context, and the UI
+- **Job distribution** - Flamenco, extended with custom GPU-aware job types for CUDA and OptiX workflows
+- **Worker nodes** - Disposable containerised Blender workers. As long as the manager stays up, job orchestration continues without intervention.
+- **Identity** - Keycloak handles SSO, group membership, and token issuance (v2+)
+- **Observability** - Prometheus + Grafana with custom Python exporters for Flamenco job metrics and NVIDIA GPU metrics
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Containerisation | Docker, Docker Compose |
+| Backend | Spring Boot 4, Spring Security OAuth2, Thymeleaf, JPA, Flyway |
+| Database | PostgreSQL |
+| Identity | Keycloak 26 |
+| Rendering | Blender, Flamenco |
+| Reverse proxy | Traefik v3 |
+| Observability | Prometheus, Grafana, cAdvisor, custom Python exporters |
+| GPU | NVIDIA CUDA / OptiX (Linux + WSL2) |
+
+---
+
+## GPU Job Types
+
+- **CUDA (Linux + WSL2):** Adapted from the [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Issues → [Pangolin tracker](https://github.com/M-Nikox/Pangolin/issues).
+
+- **OptiX (Linux):** Original community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin. Issues → [Flamenco tracker](https://projects.blender.org/studio/flamenco/issues).
+
+---
+
+## Prerequisites
+
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux)
+- NVIDIA GPU with drivers installed
+- NVIDIA Container Toolkit (`nvidia-docker2`) for GPU workers
+- WSL2 with GPU passthrough enabled (Windows only)
 
 ---
 
 ## Project Status
 
-| Version | Branch      | Status      | Notes                                      |
-|---------|------------|------------|--------------------------------------------|
-| v1.x    | master     | Stable     | Production-ready baseline                  |
-| v2      | v2-dev     | Prototype  | Architecture experimentation              |
+| Version | Branch | Status | Notes |
+|---------|--------|--------|-------|
+| v1.x | `master` | ✅ Stable | Production-ready, no-auth single-user |
+| v2 | `v2` | 🚧 In development | Multi-user auth, HTTPS testing in progress |
 
 ---
 
-## Key Features
+## Contributing
 
-- Stateless control plane architecture for resilience
-- GPU-enabled containerized rendering (Linux + WSL2 CUDA support)
-- Distributed job execution via Flamenco, extended with custom GPU-aware job definitions
-- Automatic job isolation per container
-- Real-time monitoring with Prometheus metrics exporters and Grafana dashboards
-- Sub-60-second full environment deployment
-- Designed for LAN/VLAN deployment simplicity
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.  
+Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23).
 
 ---
 
-## Architecture Overview
+## License
 
-Pangolin separates responsibilities across distinct services:
-
-- **Control plane:** Spring Boot backend
-- **Job distribution layer:** Flamenco, extended for GPU workloads
-- **Containerized GPU-enabled worker nodes**
-- **Observability stack:** Prometheus + Grafana, with Python-based custom exporters
-
-Workers are disposable by design. As long as the manager and backend remain operational, job orchestration continues without manual intervention.
+Licensed under the [Apache License 2.0](LICENSE).  
+See [THIRD_PARTY_SOFTWARE.md](THIRD_PARTY_SOFTWARE.md) for third-party licenses.
 
 ---
-
-## Technology Stack
-
-- **Docker** / **Docker Compose** - Containerization & orchestration  
-- **Spring Boot** - Backend job control  
-- **Python** - Custom Prometheus exporters for metrics  
-- **Flamenco** - Distributed render job distribution  
-- **Blender** - Rendering engine  
-- **Prometheus** - Metrics collection & monitoring  
-- **Grafana** - Real-time dashboards & observability
-
----
-
-### GPU Job Types
-
-- **CUDA (Linux + WSL2):** Adapted from [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Please report any issues at [Pangolin's tracker](https://github.com/M-Nikox/Pangolin/issues).
-
-- **[OptiX (Linux)](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/):** Community-made Flamenco job type by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin to provide GPU rendering for specific workflows. Please report any issues at [Flamenco’s tracker](https://projects.blender.org/studio/flamenco/issues).
-
----
-
-### Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23)
-
----
-
-## Quick Start
-
-1. Copy `.env.example` and configure environment variables
-2. Rename to `.env`
-3. Run:
-
-```bash
-docker compose up -d --build
-```
-
-Deployment completes in under one minute on most systems.
-
-Note: Initial Grafana database creation may take a short moment.
 
 ## Acknowledgments
 

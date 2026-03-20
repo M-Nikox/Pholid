@@ -49,7 +49,7 @@ public interface FlamencoClient {
     Map<String, Object> getJob(@PathVariable String jobId);
 
     @PostExchange("/jobs")
-    void submitJob(@RequestBody JobSubmitRequest request);
+    Map<String, Object> submitJob(@RequestBody JobSubmitRequest request);
 
     @PostExchange("/jobs/{jobId}/setstatus")
     void setJobStatus(@PathVariable String jobId, @RequestBody JobSetStatusRequest request);

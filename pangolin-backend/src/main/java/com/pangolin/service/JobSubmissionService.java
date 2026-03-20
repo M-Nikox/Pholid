@@ -13,7 +13,11 @@ import com.pangolin.config.PangolinProperties;
 import com.pangolin.dto.JobSubmitRequest;
 import com.pangolin.dto.JobTypesResponse;
 import com.pangolin.exception.ValidationException;
+import com.pangolin.job.Job;
+import com.pangolin.job.JobRepository;
 import com.pangolin.model.FrameValidationResult;
+import com.pangolin.service.QuotaService;
+import com.pangolin.service.UserContextService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,6 +27,7 @@ import org.springframework.web.util.HtmlUtils;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -41,15 +46,24 @@ public class JobSubmissionService {
     private final FileStorageService storageService;
     private final ZipSubmissionService zipService;
     private final PangolinProperties props;
+    private final JobRepository jobRepository;
+    private final UserContextService userContextService;
+    private final QuotaService quotaService;
 
     public JobSubmissionService(FlamencoClient flamencoClient,
                                 FileStorageService storageService,
                                 ZipSubmissionService zipService,
-                                PangolinProperties props) {
-        this.flamencoClient = flamencoClient;
-        this.storageService = storageService;
-        this.zipService     = zipService;
-        this.props          = props;
+                                PangolinProperties props,
+                                JobRepository jobRepository,
+                                UserContextService userContextService,
+                                QuotaService quotaService) {
+        this.flamencoClient     = flamencoClient;
+        this.storageService     = storageService;
+        this.zipService         = zipService;
+        this.props              = props;
+        this.jobRepository      = jobRepository;
+        this.userContextService = userContextService;
+        this.quotaService       = quotaService;
     }
 
     /**
@@ -69,6 +83,9 @@ public class JobSubmissionService {
                                    String computeMode,
                                    String blendFileName) throws IOException {
 
+        String username = userContextService.getCurrentUsername();
+        quotaService.checkQuota(username);
+
         String safeName = sanitizeProjectName(rawProjectName);
 
         FrameValidationResult frameResult = validateFrames(frames);
@@ -83,9 +100,9 @@ public class JobSubmissionService {
                 ? file.getOriginalFilename().toLowerCase(java.util.Locale.ROOT) : "";
 
         if (originalName.endsWith(".zip")) {
-            return submitZip(file, safeName, frames, totalFrames, flamencoPriority, computeMode, blendFileName);
+            return submitZip(file, safeName, frames, totalFrames, flamencoPriority, computeMode, blendFileName, username);
         } else {
-            return submitBlend(file, safeName, frames, totalFrames, flamencoPriority, computeMode);
+            return submitBlend(file, safeName, frames, totalFrames, flamencoPriority, computeMode, username);
         }
     }
 
@@ -98,11 +115,12 @@ public class JobSubmissionService {
                                           String frames,
                                           int totalFrames,
                                           int priority,
-                                          String computeMode) throws IOException {
+                                          String computeMode,
+                                          String username) throws IOException {
         validateBlendFile(file);
         String jobId = createBlendJobDirectory(file);
         sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
-                storageService.getJobRoot().resolve(jobId).resolve("input.blend"));
+                storageService.getJobRoot().resolve(jobId).resolve("input.blend"), username);
         return SubmissionResult.clean(jobId);
     }
 
@@ -116,7 +134,8 @@ public class JobSubmissionService {
                                         int totalFrames,
                                         int priority,
                                         String computeMode,
-                                        String blendFileName) throws IOException {
+                                        String blendFileName,
+                                        String username) throws IOException {
 
         if (blendFileName == null || blendFileName.isBlank()) {
             throw new ValidationException("A blend filename is required when submitting a zip project.");
@@ -135,7 +154,7 @@ public class JobSubmissionService {
                 zipService.extractAndLocate(file, blendFileName, jobDir);
 
         sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
-                result.blendFilePath());
+                result.blendFilePath(), username);
 
         if (result.warnings().isEmpty()) {
             return SubmissionResult.clean(jobId);
@@ -249,11 +268,11 @@ public class JobSubmissionService {
                                 int totalFrames,
                                 int priority,
                                 String computeMode,
-                                Path blendFile) {
+                                Path blendFile,
+                                String username) {
 
         Path jobDir    = storageService.getJobRoot().resolve(jobId);
         String jobType = resolveJobType(computeMode);
-        boolean useGpu = jobType.startsWith("cycles-");
         String typeEtag = fetchJobTypeEtag(jobType);
 
         JobSubmitRequest request = new JobSubmitRequest(
@@ -270,11 +289,24 @@ public class JobSubmissionService {
                         "compute_mode",    computeMode,
                         "pangolin.job_id", jobId
                 ),
-                buildSettings(frames, blendFile, jobDir, useGpu)
+                buildSettings(frames, blendFile, jobDir)
         );
 
-        flamencoClient.submitJob(request);
-        log.info("Job {} submitted with priority {} type={}", jobId, priority, jobType);
+        Map<String, Object> response = flamencoClient.submitJob(request);
+        String flamencoJobId = response != null ? (String) response.get("id") : null;
+        log.info("Job {} submitted — flamenco_id={} priority={} type={}", jobId, flamencoJobId, priority, jobType);
+
+        // Persist the Job so history, quotas, and per-user filtering all work
+        Job job = new Job();
+        job.setPangolinJobId(jobId);
+        job.setFlamencoJobId(flamencoJobId);
+        job.setName("Pangolin_" + projectName);
+        job.setStatus("queued");
+        job.setProjectName(projectName);
+        job.setFrames(frames);
+        job.setSubmittedAt(OffsetDateTime.now());
+        job.setSubmittedBy(username);
+        jobRepository.save(job);
     }
 
     /**
@@ -301,8 +333,7 @@ public class JobSubmissionService {
         }
     }
 
-    private Map<String, Object> buildSettings(String frames, Path blendFile,
-                                               Path jobDir, boolean useGpu) {
+    private Map<String, Object> buildSettings(String frames, Path blendFile, Path jobDir) {
         Path outputDir = jobDir.resolve("output");
         Map<String, Object> settings = new LinkedHashMap<>();
         settings.put("blendfile",             blendFile.toString());

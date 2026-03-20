@@ -1,0 +1,96 @@
+# ============================================================
+# traefik.me override for local testing WITHOUT a real domain
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.traefik-me.yml up -d
+#
+# Set DOMAIN in your .env to your machine's public IP:
+#   DOMAIN=1.2.3.4.traefik.me
+#
+# Your services will then be available at:
+#   https://1.2.3.4.traefik.me         (Pangolin)
+#   https://auth.1.2.3.4.traefik.me    (Keycloak)
+#   https://grafana.1.2.3.4.traefik.me
+#   https://render.1.2.3.4.traefik.me  (Flamenco)
+#   https://metrics.1.2.3.4.traefik.me (Prometheus)
+#   https://oauth2.1.2.3.4.traefik.me
+#
+# traefik.me provides a wildcard TLS cert for *.traefik.me and *.*.traefik.me
+# so ACME/Let's Encrypt is not used at all here.
+#
+# Find your public IP: curl ifconfig.me
+# ============================================================
+
+services:
+
+  traefik:
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=pangolin-network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.file.directory=/dynamic"
+      - "--providers.file.watch=true"
+      # No ACME resolver — traefik.me wildcard cert is fetched at runtime
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic:/dynamic:ro
+      # No traefik-certs volume needed — traefik.me handles it
+
+  # Remove certresolver from all routers — traefik.me cert is automatic
+  keycloak:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.${DOMAIN}`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+      - "traefik.http.routers.keycloak.tls=true"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+
+  oauth2-proxy:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.oauth2-proxy.rule=Host(`oauth2.${DOMAIN}`)"
+      - "traefik.http.routers.oauth2-proxy.entrypoints=websecure"
+      - "traefik.http.routers.oauth2-proxy.tls=true"
+      - "traefik.http.services.oauth2-proxy.loadbalancer.server.port=4180"
+
+  flamenco-manager:
+    labels:
+      - "com.pangolin.service=flamenco-manager"
+      - "traefik.enable=true"
+      - "traefik.http.routers.flamenco.rule=Host(`render.${DOMAIN}`)"
+      - "traefik.http.routers.flamenco.entrypoints=websecure"
+      - "traefik.http.routers.flamenco.tls=true"
+      - "traefik.http.services.flamenco.loadbalancer.server.port=8080"
+      - "traefik.http.routers.flamenco.middlewares=keycloak-auth@docker"
+
+  pangolin-backend:
+    labels:
+      - "com.pangolin.service=backend"
+      - "traefik.enable=true"
+      - "traefik.http.routers.pangolin.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pangolin.entrypoints=websecure"
+      - "traefik.http.routers.pangolin.tls=true"
+      - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
+
+  prometheus:
+    labels:
+      - "com.pangolin.service=monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`metrics.${DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus.middlewares=keycloak-auth@docker"
+
+  grafana:
+    labels:
+      - "com.pangolin.service=monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"

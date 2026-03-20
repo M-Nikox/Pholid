@@ -63,9 +63,67 @@
                     </button>
                     <ul id="themeSelectorList" class="theme-selector-list" role="listbox" aria-label="Theme"></ul>
                 </div>
+
                 <div class="px-4 py-2 glass-card flex items-center gap-2">
                     <div id="farm-status-indicator" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                     <span id="farm-status-text" class="text-xs font-bold opacity-80 uppercase tracking-widest">Farm Online</span>
+                </div>
+
+                <!-- Avatar dropdown -->
+                <div class="relative" id="avatarDropdownContainer">
+                    <button onclick="toggleAvatarDropdown()"
+                        class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center hover:scale-105 transition-all focus:outline-none"
+                        style="border: 1.5px solid rgba(255,255,255,0.15);" title="Profile">
+                        <img id="avatarImg" th:attr="data-src='/api/profile/avatar/' + ${currentUser}"
+                             alt="" class="w-full h-full object-cover" style="display:none;">
+                        <span id="avatarInitials" class="w-full h-full items-center justify-center text-xs font-black"
+                              style="display:flex; background:var(--pangolin-orange); color:var(--accent-text);">?</span>
+                    </button>
+
+                    <div id="avatarDropdown" class="avatar-dropdown">
+                        <!-- Profile info -->
+                        <div class="p-4 flex items-center gap-3" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <label for="avatarUploadInput" class="relative group cursor-pointer flex-shrink-0">
+                                <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center"
+                                     style="border:2px solid rgba(255,255,255,0.15);">
+                                    <img id="avatarImgLarge" th:attr="data-src='/api/profile/avatar/' + ${currentUser}"
+                                         alt="" class="w-full h-full object-cover" style="display:none;">
+                                    <span id="avatarInitialsLarge" class="w-full h-full items-center justify-center text-sm font-black"
+                                          style="display:flex; background:var(--pangolin-orange); color:var(--accent-text);">?</span>
+                                </div>
+                                <div class="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                                     style="background:rgba(0,0,0,0.5); font-size:12px;">📷</div>
+                            </label>
+                            <input type="file" id="avatarUploadInput" accept="image/jpeg,image/png,image/webp,image/gif"
+                                   class="hidden" onchange="uploadAvatar(this)">
+                            <div class="min-w-0">
+                                <p class="font-bold text-sm truncate" th:text="${fullName}">User</p>
+                                <p class="text-[10px] opacity-50 truncate" th:text="'@' + ${currentUser}">@user</p>
+                                <p class="text-[10px] opacity-40 truncate" th:if="${email}" th:text="${email}"></p>
+                                <span th:if="${isAdmin}"
+                                      class="inline-block mt-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full"
+                                      style="background:var(--pangolin-orange); color:var(--accent-text);">Admin</span>
+                            </div>
+                        </div>
+                        <!-- Nav links -->
+                        <div class="p-2" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <a href="/preferences" class="avatar-dropdown-item">
+                                <span>⚙</span> Preferences
+                            </a>
+                            <a th:if="${isAdmin}" href="/admin" class="avatar-dropdown-item">
+                                <span>🛡</span> Admin panel
+                            </a>
+                        </div>
+                        <!-- Logout -->
+                        <div class="p-2">
+                            <form th:if="${currentUser != 'anonymous'}" th:action="@{/logout}" method="post">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="avatar-dropdown-item avatar-dropdown-item--danger w-full text-left">
+                                    <span>⏻</span> Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -213,7 +271,7 @@
                             </details>
 
                     <div class="flex gap-3">
-                        <button type="submit" id="submitBtn" class="flex-1 py-5 rounded-2xl font-black text-lg tracking-[0.1em] hover:brightness-110 active:scale-[0.98] transition-all shadow-xl uppercase" style="background: var(--pangolin-orange); color: var(--accent-text); box-shadow: 0 20px 25px -5px rgba(var(--pangolin-orange-rgb),0.2)">
+                        <button type="submit" id="submitBtn" class="flex-1 py-5 rounded-2xl font-black text-lg tracking-[0.1em] hover:brightness-110 active:scale-[0.98] transition-all shadow-xl uppercase">
                             Launch Render Session
                         </button>
                         <button type="button" id="clearFormBtn" title="Clear form"
@@ -226,8 +284,8 @@
             </section>
 
             <!-- RIGHT: Sessions Sidebar -->
-            <div class="flex flex-col gap-6" style="min-width: 0; height: 100%;">
-                <!-- Live Sessions -->
+            <div class="flex flex-col gap-6" style="min-width: 0; height: 0; min-height: 100%;">
+                
                 <section class="glass-card p-6 flex flex-col" style="height: 310px;">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Live Sessions</h2>
@@ -238,15 +296,13 @@
                     </div>
                 </section>
 
-                <!-- Previous -->
                 <section class="glass-card p-6 flex flex-col" style="flex: 1; min-height: 0;">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-lg font-bold font-outfit uppercase tracking-widest">Previous</h2>
                         <span class="text-[10px] opacity-30 font-bold uppercase tracking-widest">Archive</span>
                     </div>
                     <div id="history-sessions-list" class="space-y-2 overflow-y-auto custom-scrollbar pr-2" style="flex: 1; min-height: 0;">
-                        <!-- History injected here -->
-                    </div>
+                        </div>
                     <button id="load-more-btn"
                             onclick="activeSessions.loadMorePreviousJobs()"
                             style="display:none"
@@ -255,7 +311,6 @@
                     </button>
                 </section>
             </div>
-        </div>
 
             </div> <!-- end panel-render -->
 
@@ -343,6 +398,9 @@
     </div>
 
     <!-- SCRIPTS -->
+    <script th:inline="javascript">
+        window.PANGOLIN_USER = { username: [[${currentUser}]], fullName: [[${fullName}]] };
+    </script>
     <script src="/js/utils.js"></script>
     <script src="/js/farm-status.js"></script>
     <script src="/js/theme.js"></script>
@@ -353,5 +411,6 @@
     <script src="/js/grafana-panels.js"></script>
     <script src="/js/modal-handlers.js"></script>
     <script src="/js/page-tabs.js"></script>
+    <script src="/js/profile-dropdown.js"></script>
 </body>
 </html>
