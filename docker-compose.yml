@@ -1,7 +1,145 @@
 services:
-  # ============================================
+
+  # ============================================================
+  # TRAEFIK - Reverse Proxy & TLS Termination
+  # ============================================================
+  traefik:
+    image: traefik:v3.3
+    container_name: pangolin-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=pangolin-network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
+      - "--providers.file.directory=/dynamic"
+      - "--providers.file.watch=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/certs
+      - ./traefik/dynamic:/dynamic:ro
+    networks:
+      - pangolin-network
+    labels:
+      - "traefik.enable=false"
+
+  # ============================================================
+  # POSTGRESQL - Shared database (Keycloak + Pangolin)
+  # ============================================================
+  postgresql:
+    image: postgres:17
+    container_name: pangolin-postgresql
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=${KEYCLOAK_PG_PASS}
+      - PANGOLIN_POSTGRES_DB=${POSTGRES_DB}
+      - PANGOLIN_POSTGRES_USER=${POSTGRES_USER}
+      - PANGOLIN_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+      - ./postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - "traefik.enable=false"
+
+  # ============================================================
+  # KEYCLOAK - Identity Provider & SSO
+  # ============================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: pangolin-keycloak
+    restart: unless-stopped
+    command: start
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgresql:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=${KEYCLOAK_PG_PASS}
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER:-admin}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_HOSTNAME=https://auth.${DOMAIN}
+      - KC_PROXY_HEADERS=xforwarded
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    expose:
+      - "8080"
+    networks:
+      - pangolin-network
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`auth.${DOMAIN}`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+      - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+
+  # ============================================================
+  # OAUTH2-PROXY - Forward Auth for Flamenco + Prometheus
+  # ============================================================
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.2
+    container_name: pangolin-oauth2-proxy
+    restart: unless-stopped
+    command:
+      - "--provider=keycloak-oidc"
+      - "--oidc-issuer-url=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}"
+      - "--client-id=${OAUTH2_PROXY_CLIENT_ID:-pangolin-proxy}"
+      - "--client-secret=${OAUTH2_PROXY_CLIENT_SECRET}"
+      - "--cookie-secret=${OAUTH2_PROXY_COOKIE_SECRET}"
+      - "--cookie-secure=true"
+      - "--cookie-domain=.${DOMAIN}"
+      - "--upstream=static://202"
+      - "--http-address=0.0.0.0:4180"
+      - "--reverse-proxy=true"
+      - "--skip-provider-button=true"
+      - "--email-domain=*"
+      - "--redirect-url=https://oauth2.${DOMAIN}/oauth2/callback"
+      - "--whitelist-domain=.${DOMAIN}"
+      - "--session-store-type=cookie"
+      - "--scope=openid email profile"
+    expose:
+      - "4180"
+    networks:
+      - pangolin-network
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.oauth2-proxy.rule=Host(`oauth2.${DOMAIN}`)"
+      - "traefik.http.routers.oauth2-proxy.entrypoints=websecure"
+      - "traefik.http.routers.oauth2-proxy.tls.certresolver=letsencrypt"
+      - "traefik.http.services.oauth2-proxy.loadbalancer.server.port=4180"
+
+  # ============================================================
   # FLAMENCO MANAGER - Render Job Orchestration
-  # ============================================
+  # ============================================================
   flamenco-manager:
     build:
       context: ./flamenco/manager
@@ -9,11 +147,8 @@ services:
     container_name: pangolin-flamenco-manager
     hostname: flamenco-manager
     restart: unless-stopped
-    # Internal port only - accessed through backend API, I wouldn't touch this unless necessary
     expose:
       - "8080"
-    ports:
-      - "${MANAGER_PORT}:8080"
     volumes:
       - flamenco-shared:/shared
       - ./flamenco/manager/flamenco-manager.yaml:/flamenco-3.8.2-linux-amd64/flamenco-manager.yaml:ro
@@ -26,10 +161,16 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=flamenco-manager"
+      - "traefik.enable=true"
+      - "traefik.http.routers.flamenco.rule=Host(`render.${DOMAIN}`)"
+      - "traefik.http.routers.flamenco.entrypoints=websecure"
+      - "traefik.http.routers.flamenco.tls.certresolver=letsencrypt"
+      - "traefik.http.services.flamenco.loadbalancer.server.port=8080"
+      - "traefik.http.routers.flamenco.middlewares=keycloak-auth@docker"
 
-  # ============================================
+  # ============================================================
   # FLAMENCO WORKERS - Blender Render Execution
-  # ============================================
+  # ============================================================
   flamenco-worker:
     build:
       context: ./flamenco/worker
@@ -44,13 +185,10 @@ services:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
-      # WSL2: /usr/lib/wsl is mounted read-only so the entrypoint can detect
-      # the environment and configure OptiX library paths automatically.
-      # On native Linux this mount is an empty directory and has no effect.
-    runtime: nvidia # NVIDIA runtime exposes GPUs to the container
+    runtime: nvidia
     volumes:
       - flamenco-shared:/shared
-      - /usr/lib/wsl:/usr/lib/wsl:ro # Allow access to WSL2 required NVIDIA OptiX libraries (read-only)
+      - /usr/lib/wsl:/usr/lib/wsl:ro
     deploy:
       replicas: ${WORKER_REPLICAS:-2}
       resources:
@@ -66,41 +204,74 @@ services:
               capabilities: [gpu, compute, utility]
     labels:
       - "com.pangolin.service=flamenco-worker"
+      - "traefik.enable=false"
 
-  # ============================================
+  # ============================================================
   # PANGOLIN BACKEND - Submission API
-  # ============================================
+  # ============================================================
   pangolin-backend:
     build:
       context: ./pangolin-backend
       dockerfile: Dockerfile
     container_name: pangolin-backend
     restart: unless-stopped
-    ports:
-      - "${WEB_PORT}:8080"
+    expose:
+      - "8080"
     volumes:
       - flamenco-shared:/shared
+      - pangolin-userdata:/userdata
     networks:
       - pangolin-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - STORAGE_ROOT=/shared
-      - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false} # Don't forget to edit this in the .env, it's set to false by default
+      - USERDATA_ROOT=/userdata
+      - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false}
+      - PANGOLIN_AUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
+      - POSTGRES_DB=${POSTGRES_DB:-pangolin}
+      - POSTGRES_USER=${POSTGRES_USER:-pangolin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-pangolin}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      # Browser-facing URIs -- must use the public domain, not the internal keycloak:8080
+      - OIDC_AUTH_URI=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/auth
+      - OIDC_LOGOUT_URI=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/logout
+      - SPRING_FLYWAY_ENABLED=true
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration
+      - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
+      - SPRING_FLYWAY_BASELINE_VERSION=0
+      - MANAGEMENT_HEALTH_MAIL_ENABLED=false
     depends_on:
       flamenco-manager:
         condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     labels:
       - "com.pangolin.service=backend"
+      - "traefik.enable=true"
+      - "traefik.http.routers.pangolin.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pangolin.entrypoints=websecure"
+      - "traefik.http.routers.pangolin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pangolin.middlewares=secure-headers@file"
+      - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
 
-  # ============================================
+  # ============================================================
   # PROMETHEUS - Metrics Collection
-  # ============================================
+  # ============================================================
   prometheus:
     image: prom/prometheus:v3.10.0
     container_name: pangolin-prometheus
     restart: unless-stopped
-    ports:                        # Feel free to remove the ports from Prometheus if you don't need them
-      - "${PROMETHEUS_PORT}:9090" # Grafana can handle PromQL testing and offers a PromQL editor as well
+    expose:
+      - "9090"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -119,28 +290,42 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`metrics.${DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus.middlewares=keycloak-auth@docker"
 
-  # ============================================
-  # GRAFANA - Visualization & Dashboards
-  # ============================================
+  # ============================================================
+  # GRAFANA - Visualisation & Dashboards
+  # ============================================================
   grafana:
     image: grafana/grafana:12.3.4
     container_name: pangolin-grafana
     restart: unless-stopped
-    ports:
-      - "${GRAFANA_PORT}:3000"
+    expose:
+      - "3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}         # Credentials here are editable in the .env
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin} # I recommend a different solution if you plan to expose this outside of a VLAN
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE}
-      - GF_SECURITY_ALLOW_EMBEDDING=${GF_SECURITY_ALLOW_EMBEDDING}
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}/
+      # Keycloak OIDC SSO
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=true
+      - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GRAFANA_OIDC_CLIENT_ID:-grafana}
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GRAFANA_OIDC_CLIENT_SECRET}
+      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid email profile
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/userinfo
+      - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=contains(groups[*], 'pangolin-admins') && 'Admin' || 'Viewer'
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      
     networks:
       - pangolin-network
     depends_on:
@@ -152,10 +337,15 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
-  # ============================================
+  # ============================================================
   # cADVISOR - Container Metrics
-  # ============================================
+  # ============================================================
   cadvisor:
     image: ghcr.io/google/cadvisor:0.56.2
     container_name: pangolin-cadvisor
@@ -174,10 +364,11 @@ services:
       - '--docker_only=true'
     labels:
       - "com.pangolin.service=monitoring"
+      - "traefik.enable=false"
 
-  # ============================================
+  # ============================================================
   # FLAMENCO EXPORTER - Custom Prometheus Exporter
-  # ============================================
+  # ============================================================
   flamenco-exporter:
     build:
       context: ./monitoring/flamenco-exporter
@@ -188,7 +379,7 @@ services:
       - "9090"
     environment:
       - FLAMENCO_API_URL=http://flamenco-manager:8080
-      - PROMETHEUS_URL=${PROMETHEUS_URL:-http://prometheus:9090}
+      - PROMETHEUS_URL=http://prometheus:9090
       - EXPORTER_PORT=9090
       - SCRAPE_INTERVAL=${EXPORTER_SCRAPE_INTERVAL:-15}
       - WORKER_SCRAPE_INTERVAL=${EXPORTER_WORKER_SCRAPE_INTERVAL:-15}
@@ -212,12 +403,11 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=monitoring"
+      - "traefik.enable=false"
 
-
-
-  # ============================================
+  # ============================================================
   # GPU EXPORTER - NVIDIA GPU Metrics
-  # ============================================
+  # ============================================================
   gpu-exporter:
     build:
       context: ./monitoring/gpu-exporter
@@ -246,25 +436,27 @@ services:
       retries: 3
     labels:
       - "com.pangolin.service=monitoring"
+      - "traefik.enable=false"
 
-# ============================================
+# ============================================================
 # NETWORKS
-# ============================================
+# ============================================================
 networks:
   pangolin-network:
+    name: pangolin-network
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.20.0.0/24
 
-# ============================================
+# ============================================================
 # VOLUMES
-# ============================================
+# ============================================================
 volumes:
-  # Shared storage for Flamenco Manager and Workers
   flamenco-shared:
     driver: local
-  
-  # Monitoring data
+  postgresql-data:
   prometheus-data:
   grafana-data:
+  traefik-certs:
+  pangolin-userdata:
