@@ -1,0 +1,40 @@
+# traefik/dynamic/middlewares.yml
+#
+# This file is watched live by Traefik - changes apply without restart.
+# Referenced in compose labels as:  middlewares=keycloak-auth@docker
+#
+# oauth2-proxy handles forward auth for services that don't have their own
+# OIDC integration (Flamenco manager, Prometheus).
+# Pangolin backend and Grafana handle their own auth internally.
+
+http:
+  middlewares:
+
+    # ----------------------------------------------------------
+    # Keycloak Forward Auth via oauth2-proxy
+    # Protects any router that includes `middlewares=keycloak-auth@docker`
+    # ----------------------------------------------------------
+    keycloak-auth:
+      forwardAuth:
+        address: "http://oauth2-proxy:4180/oauth2/auth"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+          - X-Forwarded-User
+          - Authorization
+
+    # ----------------------------------------------------------
+    # Security Headers
+    # ----------------------------------------------------------
+    secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
