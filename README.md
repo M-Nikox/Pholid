@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/pangolin-orange.svg" width="180" alt="Pangolin Logo">
+  <img src="assets\pangolin-readme.svg" width="180" alt="Pangolin Logo">
 </p>
 
 <h1 align="center">Pangolin</h1>
