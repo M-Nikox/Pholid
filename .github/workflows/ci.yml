@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
+    branches: [ master ]
+  pull_request_target:
+    branches: [ master ]
+    types: [ opened, synchronize, reopened ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -14,14 +19,18 @@ jobs:
     permissions:
       checks: write
       contents: read
-      pull-requests: write
+      pull-requests: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout PR head
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.2.0
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -29,10 +38,17 @@ jobs:
 
       - name: Run tests
         working-directory: pangolin-backend
-        run: mvn test -B
+        run: mvn test -B --no-transfer-progress
 
       - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@v2.23.0
         if: always()
         with:
           files: pangolin-backend/target/surefire-reports/*.xml
+          comment_mode: off
+
+      - name: Log PR info
+        if: github.event_name == 'pull_request_target'
+        run: |
+          echo "Testing PR #${{ github.event.pull_request.number }} from ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Commit SHA: ${{ github.event.pull_request.head.sha }}"
