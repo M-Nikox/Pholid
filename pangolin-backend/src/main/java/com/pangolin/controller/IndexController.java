@@ -6,7 +6,9 @@
 
 package com.pangolin.controller;
 
+import com.pangolin.service.UserContextService;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
@@ -16,8 +18,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class IndexController {
 
+    private final UserContextService userContextService;
+
+    public IndexController(UserContextService userContextService) {
+        this.userContextService = userContextService;
+    }
+
     @GetMapping("/")
-    public String index() {
+    public String index(Model model) {
+        model.addAttribute("isAdmin",     userContextService.isAdmin());
+        model.addAttribute("currentUser", userContextService.getCurrentUsername());
+        model.addAttribute("fullName",    userContextService.getFullName());
+        model.addAttribute("email",       userContextService.getEmail());
         return "upload";
     }
 }
