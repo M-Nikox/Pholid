@@ -1,103 +1,104 @@
-# Pangolin
+<p align="center">
+  <img src="assets/pangolin-orange.svg" width="180" alt="Pangolin Logo">
+</p>
 
-## Distributed GPU-Enabled Render Orchestrator
+<h1 align="center">Pangolin</h1>
+<h3 align="center">Distributed GPU-Accelerated Render Orchestrator</h3>
 
-Pangolin is a Docker-native, stateless render orchestration platform designed for GPU-accelerated Blender workloads. It provides containerized job isolation, distributed worker coordination, and real-time observability with sub-1-minute deployment.
-
-Built for reliability, reproducibility, and operational clarity.
-
----
-
-## Stable Release (v1.0.0)
-
-The **v1.0.0** release represents the fully hand-written, production-ready implementation of Pangolin.  
-All architecture, code, and functionality in v1 were developed manually.  
-
-This release is considered the stable baseline for the project and can be used in production environments with confidence.
+<p align="center">
+  <a href="https://github.com/M-Nikox/Pangolin/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pangolin?label=stable&color=4c9a2a" alt="Stable Release"></a>
+  <a href="https://github.com/M-Nikox/Pangolin/actions"><img src="https://github.com/M-Nikox/Pangolin/actions/workflows/ci.yml/badge.svg?branch=master" alt="Tests"></a>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
+  <img src="https://img.shields.io/badge/blender-GPU%20rendering-e87d0d" alt="Blender">
+  <img src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white" alt="Docker">
+</p>
 
 ---
 
-## Experimental Prototype (v2-dev)
+Pangolin is a Docker-native render orchestration platform for GPU-accelerated Blender workloads. It handles job submission, GPU worker coordination, and real-time observability in a single deployable stack.
 
-The **v2-dev** branch is a separate experimental prototype used to explore potential improvements to the architecture.  
-It is **not production-ready** and exists solely to evaluate design ideas before any manual development begins.  
-
-No merging into the stable master is guaranteed at this stage.
-
----
-
-## Project Status
-
-| Version | Branch      | Status      | Notes                                      |
-|---------|------------|------------|--------------------------------------------|
-| v1.x    | master     | Stable     | Production-ready baseline                  |
-| v2      | v2-dev     | Prototype  | Architecture experimentation              |
-
----
-
-## Key Features
-
-- Stateless control plane architecture for resilience
-- GPU-enabled containerized rendering (Linux + WSL2 CUDA support)
-- Distributed job execution via Flamenco, extended with custom GPU-aware job definitions
-- Automatic job isolation per container
-- Real-time monitoring with Prometheus metrics exporters and Grafana dashboards
-- Sub-60-second full environment deployment
-- Designed for LAN/VLAN deployment simplicity
-
----
-
-## Architecture Overview
-
-Pangolin separates responsibilities across distinct services:
-
-- **Control plane:** Spring Boot backend
-- **Job distribution layer:** Flamenco, extended for GPU workloads
-- **Containerized GPU-enabled worker nodes**
-- **Observability stack:** Prometheus + Grafana, with Python-based custom exporters
-
-Workers are disposable by design. As long as the manager and backend remain operational, job orchestration continues without manual intervention.
-
----
-
-## Technology Stack
-
-- **Docker** / **Docker Compose** - Containerization & orchestration  
-- **Spring Boot** - Backend job control  
-- **Python** - Custom Prometheus exporters for metrics  
-- **Flamenco** - Distributed render job distribution  
-- **Blender** - Rendering engine  
-- **Prometheus** - Metrics collection & monitoring  
-- **Grafana** - Real-time dashboards & observability
-
----
-
-### GPU Job Types
-
-- **CUDA (Linux + WSL2):** Adapted from [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Please report any issues at [Pangolin's tracker](https://github.com/M-Nikox/Pangolin/issues).
-
-- **[OptiX (Linux)](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/):** Community-made Flamenco job type by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin to provide GPU rendering for specific workflows. Please report any issues at [Flamenco’s tracker](https://projects.blender.org/studio/flamenco/issues).
-
----
-
-### Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23)
+Free and open source, forever.
 
 ---
 
 ## Quick Start
 
-1. Copy `.env.example` and configure environment variables
-2. Rename to `.env`
-3. Run:
-
 ```bash
+cp .env.example .env   # fill in your values
 docker compose up -d --build
 ```
 
-Deployment completes in under one minute on most systems.
+Deployment completes in under one minute.
 
-Note: Initial Grafana database creation may take a short moment.
+| Service | URL |
+|---------|-----|
+| Pangolin | `http://localhost` |
+| Flamenco manager | `http://localhost:88` |
+| Grafana | `http://localhost:3000` |
+| Prometheus | `http://localhost:9090` |
+
+> Ports are configurable in `.env`. Initial Grafana database creation may take a short moment on first boot.
+
+---
+
+## Architecture
+
+Pangolin separates responsibilities cleanly across distinct services:
+
+- **Control plane** - Spring Boot backend handles job submission and the UI
+- **Job distribution** - Flamenco, extended with custom GPU-aware job types for CUDA and OptiX workflows
+- **Worker nodes** - Disposable containerised Blender workers. As long as the manager stays up, job orchestration continues without intervention.
+- **Observability** - Prometheus + Grafana with custom Python exporters for Flamenco job metrics and NVIDIA GPU metrics
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Containerisation | Docker, Docker Compose |
+| Backend | Spring Boot |
+| Rendering | Blender, Flamenco |
+| Observability | Prometheus, Grafana, cAdvisor, custom Python exporters |
+| GPU | NVIDIA CUDA / OptiX (Linux + WSL2) |
+
+---
+
+## GPU Job Types
+
+- **CUDA (Linux + WSL2):** Adapted from the [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Issues → [Pangolin tracker](https://github.com/M-Nikox/Pangolin/issues).
+
+- **OptiX (Linux):** Original community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin. Issues → [Flamenco tracker](https://projects.blender.org/studio/flamenco/issues).
+
+---
+
+## Prerequisites
+
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux)
+- NVIDIA GPU with drivers installed
+- NVIDIA Container Toolkit (`nvidia-docker2`) for GPU workers
+- WSL2 with GPU passthrough enabled (Windows only)
+
+---
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.  
+Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23).
+
+---
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).  
+See [THIRD_PARTY_SOFTWARE.md](THIRD_PARTY_SOFTWARE.md) for third-party licenses.
+
+---
 
 ## Acknowledgments
 
 Special thanks to [yeezygambino](https://github.com/yeezygambino) for consistently testing releases and providing valuable feedback.
+
+---
+
+> Looking for multi-user auth and HTTPS support? See the [v2 branch](https://github.com/M-Nikox/Pangolin/tree/v2-dev).
