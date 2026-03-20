@@ -94,7 +94,7 @@ const activeSessions = (() => {
         updateLoadMoreButton();
 
         try {
-            const response = await fetch(`/api/jobs/previous?limit=${PAGE_SIZE}&offset=0`);
+            const response = await fetch(`/api/jobs/history?limit=${PAGE_SIZE}&offset=0`);
 
             if (!response.ok) {
                 console.error('Failed to fetch previous jobs:', response.status);
@@ -643,7 +643,7 @@ const activeSessions = (() => {
         }
 
         try {
-            const response = await fetch(`/api/jobs/previous?limit=${PAGE_SIZE}&offset=${previousJobsOffset}`);
+            const response = await fetch(`/api/jobs/history?limit=${PAGE_SIZE}&offset=${previousJobsOffset}`);
 
             if (!response.ok) {
                 console.error('Failed to load more previous jobs:', response.status);
