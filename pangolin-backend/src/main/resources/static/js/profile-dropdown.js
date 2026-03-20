@@ -1,10 +1,10 @@
-/**
- * profile-dropdown.js
+/** Copyright © 2026 Pangolin - SPDX-License-Identifier: Apache-2.0
+ * Pangolin Profile Dropdown
  * Handles avatar dropdown toggle, outside-click close, initials fallback,
  * and avatar upload with cache-bust.
- *
+ * 
  * Expects window.PANGOLIN_USER to be set by the template:
- *   window.PANGOLIN_USER = { username: "...", fullName: "..." };
+ * window.PANGOLIN_USER = { username: "...", fullName: "..." };
  */
 
 (function () {
