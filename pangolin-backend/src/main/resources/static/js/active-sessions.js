@@ -7,9 +7,13 @@ const activeSessions = (() => {
     let activeJobs = [];
     let _lastActiveIds = new Set(); // tracks IDs from previous poll to detect completions
     const POLL_INTERVAL_MS = 3000;
+    const HISTORY_RETRY_DELAY_MS = 2500;
+    const HISTORY_MAX_RETRIES = 2;
     const PAGE_SIZE = 50;
     let previousJobsOffset = 0;
     let previousJobsHasMore = false;
+    let activePollInFlight = false;
+    let rerunActivePoll = false;
 
     function init() {
         console.log('Active Sessions module initializing...');
@@ -23,7 +27,7 @@ const activeSessions = (() => {
         // When a job completes (notification fired), refresh history
         document.addEventListener('pangolin:renderComplete', () => {
             fetchAndDisplayActiveJobs();
-            fetchAndDisplayPreviousJobs();
+            refreshPreviousJobsWithRetry();
         });
     }
 
@@ -44,6 +48,11 @@ const activeSessions = (() => {
     }
 
     async function fetchAndDisplayActiveJobs() {
+        if (activePollInFlight) {
+            rerunActivePoll = true;
+            return;
+        }
+        activePollInFlight = true;
         try {
             const response = await fetch('/api/jobs/active');
             
@@ -72,19 +81,34 @@ const activeSessions = (() => {
             if (jobsJustFinished) {
                 console.log('✅ Job(s) completed, refreshing Previous panel');
                 previousJobsOffset = 0;
-                fetchAndDisplayPreviousJobs();
+                refreshPreviousJobsWithRetry();
             }
             _lastActiveIds = currentIds;
-
-            // Pause polling when nothing is active, then resume on next submission
-            if (activeJobs.length === 0 && pollInterval) {
-                stopPolling();
-            }
             
         } catch (error) {
             console.error('❌ Error fetching active jobs:', error);
             showPanelError('active-sessions-list', 'Could not reach the farm. Retrying...');
+        } finally {
+            activePollInFlight = false;
+            if (rerunActivePoll) {
+                rerunActivePoll = false;
+                fetchAndDisplayActiveJobs();
+            }
         }
+    }
+
+    function refreshPreviousJobsWithRetry(retriesLeft = HISTORY_MAX_RETRIES) {
+        fetchAndDisplayPreviousJobs().then((jobs) => {
+            if (retriesLeft <= 0 || jobs.length > 0) {
+                return;
+            }
+            setTimeout(() => refreshPreviousJobsWithRetry(retriesLeft - 1), HISTORY_RETRY_DELAY_MS);
+        }).catch(() => {
+            if (retriesLeft <= 0) {
+                return;
+            }
+            setTimeout(() => refreshPreviousJobsWithRetry(retriesLeft - 1), HISTORY_RETRY_DELAY_MS);
+        });
     }
 
     async function fetchAndDisplayPreviousJobs() {
@@ -112,10 +136,12 @@ const activeSessions = (() => {
             updateLoadMoreButton();
 
             renderPreviousJobs(jobs);
+            return jobs;
 
         } catch (error) {
             console.error('❌ Error fetching previous jobs:', error);
             showPanelError('history-sessions-list', 'Could not load history. Retrying...');
+            return [];
         }
     }
 
@@ -508,7 +534,7 @@ const activeSessions = (() => {
     function handleNewJobSubmitted() {
         console.log('🎬 New job submitted, refreshing sessions');
         fetchAndDisplayActiveJobs();
-        fetchAndDisplayPreviousJobs();
+        refreshPreviousJobsWithRetry();
         
         if (!pollInterval) {
             startPolling();
@@ -561,7 +587,7 @@ const activeSessions = (() => {
                     card.style.transform = 'translateX(8px)';
                     setTimeout(() => card.remove(), 200);
                 }
-                fetchAndDisplayPreviousJobs();
+                refreshPreviousJobsWithRetry();
 
             } else if (response.status === 403) {
                 showDeleteError(btn, 'Delete not enabled. Set ENABLE_DELETE=true in .env');
@@ -573,7 +599,7 @@ const activeSessions = (() => {
                     showCardWarning(card, 'Job removed from Flamenco but output files could not be deleted. Remove them manually.');
                     setTimeout(() => card.remove(), 5000);
                 }
-                fetchAndDisplayPreviousJobs();
+                refreshPreviousJobsWithRetry();
 
             } else {
                 console.error('Delete failed:', data);
