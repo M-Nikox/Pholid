@@ -13,7 +13,9 @@ import com.pangolin.exception.JobConflictException;
 import com.pangolin.exception.ValidationException;
 import com.pangolin.model.SubmissionResult;
 import com.pangolin.service.FileStorageService;
+import com.pangolin.service.JobCleanupService;
 import com.pangolin.service.JobSubmissionService;
+import com.pangolin.service.UserContextService;
 import com.pangolin.validation.IdValidator;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -22,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,15 +42,21 @@ public class RenderController {
 
     private final JobSubmissionService submissionService;
     private final FileStorageService storageService;
+    private final JobCleanupService jobCleanupService;
+    private final UserContextService userContextService;
     private final FlamencoClient flamencoClient;
     private final PangolinProperties props;
 
     public RenderController(JobSubmissionService submissionService,
                             FileStorageService storageService,
+                            JobCleanupService jobCleanupService,
+                            UserContextService userContextService,
                             FlamencoClient flamencoClient,
                             PangolinProperties props) {
         this.submissionService = submissionService;
         this.storageService    = storageService;
+        this.jobCleanupService = jobCleanupService;
+        this.userContextService = userContextService;
         this.flamencoClient    = flamencoClient;
         this.props             = props;
     }
@@ -81,6 +90,10 @@ public class RenderController {
             response.sendError(HttpStatus.BAD_REQUEST.value(), "Invalid job ID format");
             return;
         }
+        if (!userContextService.canAccessByPangolinId(jobId)) {
+            response.sendError(HttpStatus.FORBIDDEN.value(), "You do not have access to this job.");
+            return;
+        }
         storageService.streamZip(jobId, response);
     }
 
@@ -89,6 +102,9 @@ public class RenderController {
         if (!IdValidator.isValidPangolinId(jobId)) {
             throw new ValidationException("Invalid job ID format");
         }
+        if (!userContextService.canAccessByPangolinId(jobId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have access to this job.");
+        }
         return storageService.getStatus(jobId);
     }
 
@@ -96,6 +112,9 @@ public class RenderController {
     public ResponseEntity<Map<String, Object>> deleteJob(@PathVariable String flamencoJobId) {
         if (!props.delete().enabled())                     throw new DeleteNotEnabledException();
         if (!IdValidator.isValidFlamencoId(flamencoJobId)) throw new ValidationException("Invalid Flamenco job ID format.");
+        if (!userContextService.canAccessByFlamencoId(flamencoJobId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have access to this job.");
+        }
 
         Map<String, Object> job = flamencoClient.getJob(flamencoJobId);
         if (job == null) throw new ValidationException("Job not found in Flamenco.");
@@ -111,6 +130,13 @@ public class RenderController {
 
         flamencoClient.deleteJob(flamencoJobId);
         log.info("Job {} deleted from Flamenco", flamencoJobId);
+
+        int deletedRows = jobCleanupService.deleteByFlamencoJobId(flamencoJobId);
+        if (deletedRows == 0) {
+            log.warn("No local jobs row deleted for Flamenco job {}", flamencoJobId);
+        } else {
+            log.info("Deleted {} local jobs row(s) for Flamenco job {}", deletedRows, flamencoJobId);
+        }
 
         if (Files.exists(jobDir)) {
             try {

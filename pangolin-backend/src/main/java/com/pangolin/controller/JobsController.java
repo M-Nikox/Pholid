@@ -66,6 +66,9 @@ public class JobsController {
     @GetMapping("/active")
     public ResponseEntity<Map<String, Object>> getActiveJobs() {
         Map<String, Object> body = flamencoClient.getJobs(ACTIVE_STATUSES, null, null);
+        if (body == null) {
+            return ResponseEntity.ok(Map.of("jobs", List.of()));
+        }
         body = userContextService.filterJobsForCurrentUser(body);
         log.info("Fetched active jobs. Count: {}", jobCount(body));
         return ResponseEntity.ok(body);
@@ -136,10 +139,14 @@ public class JobsController {
     @PostMapping("/{jobId}/cancel")
     public ResponseEntity<Map<String, Object>> cancelJob(@PathVariable String jobId) {
         if (!IdValidator.isValidFlamencoId(jobId)) throw new ValidationException("Invalid job ID format");
+        if (!userContextService.canAccessByFlamencoId(jobId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden", "jobId", jobId));
+        }
 
         try {
             flamencoClient.setJobStatus(jobId,
                     new JobSetStatusRequest("cancel-requested", "Cancelled by user via Pangolin"));
+            jobRepository.updateStatusByFlamencoJobId(jobId, "cancel-requested");
             log.info("Cancel requested for job {}", jobId);
             return ResponseEntity.ok(Map.of("message", "Cancel requested", "jobId", jobId));
 
@@ -158,6 +165,9 @@ public class JobsController {
     @GetMapping("/{jobId}")
     public ResponseEntity<Map<String, Object>> getJobDetails(@PathVariable String jobId) {
         if (!IdValidator.isValidFlamencoId(jobId)) throw new ValidationException("Invalid job ID format");
+        if (!userContextService.canAccessByFlamencoId(jobId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden", "jobId", jobId));
+        }
         Map<String, Object> body = flamencoClient.getJob(jobId);
         log.info("Fetched job details for {}", jobId);
         return ResponseEntity.ok(body);
@@ -166,6 +176,9 @@ public class JobsController {
     @GetMapping("/{jobId}/tasks")
     public ResponseEntity<Map<String, Object>> getJobTasks(@PathVariable String jobId) {
         if (!IdValidator.isValidFlamencoId(jobId)) throw new ValidationException("Invalid job ID");
+        if (!userContextService.canAccessByFlamencoId(jobId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden", "jobId", jobId));
+        }
         Map<String, Object> body = flamencoClient.getJobTasks(jobId);
         log.debug("Fetched tasks for job {}", jobId);
         return ResponseEntity.ok(body);
@@ -185,6 +198,9 @@ public class JobsController {
 
         if (!IdValidator.isValidFlamencoId(jobId) || !IdValidator.isValidFlamencoId(taskId)) {
             return ResponseEntity.badRequest().body("Invalid ID format");
+        }
+        if (!userContextService.canAccessByFlamencoId(jobId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
         }
 
         try {

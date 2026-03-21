@@ -11,6 +11,16 @@ const modalHandlers = (() => {
         initLogModal();
     }
 
+    function ensureModalAttachedToBody(modal) {
+        if (!modal || modal.parentElement === document.body) return;
+        document.body.appendChild(modal);
+    }
+
+    function setModalOpenState(isOpen) {
+        document.documentElement.classList.toggle('modal-open', isOpen);
+        document.body.classList.toggle('modal-open', isOpen);
+    }
+
     function initGuideModal() {
         const modal = document.getElementById('guideModal');
         const closeBtn = document.getElementById('closeModal');
@@ -18,13 +28,16 @@ const modalHandlers = (() => {
         const helpBtn = document.getElementById('helpBtn');
 
         if (!modal) return;
+        ensureModalAttachedToBody(modal);
 
         function openModal() {
             modal.style.display = 'flex';
+            setModalOpenState(true);
         }
 
         function closeModal() {
             modal.style.display = 'none';
+            setModalOpenState(false);
             localStorage.setItem(STORAGE_KEY, 'true');
         }
 
@@ -46,9 +59,11 @@ const modalHandlers = (() => {
         const modal = document.getElementById('logModal');
         const closeBtn = document.getElementById('closeLogModal');
         if (!modal) return;
+        ensureModalAttachedToBody(modal);
 
         function close() {
             modal.style.display = 'none';
+            setModalOpenState(false);
             document.getElementById('logModalTaskList').innerHTML = '<p class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-1">Tasks</p>';
             document.getElementById('logModalContent').innerHTML = '<p class="text-xs opacity-30 italic">Select a task to view its log.</p>';
             document.getElementById('logModalJobName').textContent = '';
@@ -74,6 +89,7 @@ const modalHandlers = (() => {
         taskList.innerHTML = '<p class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-1">Tasks</p><p class="text-xs opacity-30 italic mt-2">Loading...</p>';
         logContent.innerHTML = '<p class="text-xs opacity-30 italic">Select a task to view its log.</p>';
         modal.style.display = 'flex';
+        setModalOpenState(true);
 
         // Fetch tasks
         let tasks = [];
