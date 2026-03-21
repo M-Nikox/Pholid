@@ -16,8 +16,6 @@ import com.pangolin.exception.ValidationException;
 import com.pangolin.job.Job;
 import com.pangolin.job.JobRepository;
 import com.pangolin.model.FrameValidationResult;
-import com.pangolin.service.QuotaService;
-import com.pangolin.service.UserContextService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,6 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -41,6 +41,7 @@ import java.util.zip.GZIPInputStream;
 public class JobSubmissionService {
 
     private static final Logger log = LoggerFactory.getLogger(JobSubmissionService.class);
+    private static final ConcurrentHashMap<String, ReentrantLock> SUBMIT_LOCKS = new ConcurrentHashMap<>();
 
     private final FlamencoClient flamencoClient;
     private final FileStorageService storageService;
@@ -82,27 +83,32 @@ public class JobSubmissionService {
                                    String priority,
                                    String computeMode,
                                    String blendFileName) throws IOException {
-
         String username = userContextService.getCurrentUsername();
-        quotaService.checkQuota(username);
+        ReentrantLock lock = SUBMIT_LOCKS.computeIfAbsent(username, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            quotaService.checkQuota(username);
 
-        String safeName = sanitizeProjectName(rawProjectName);
+            String safeName = sanitizeProjectName(rawProjectName);
 
-        FrameValidationResult frameResult = validateFrames(frames);
-        if (frameResult instanceof FrameValidationResult.Invalid invalid) {
-            throw new ValidationException(invalid.error());
-        }
-        int totalFrames = ((FrameValidationResult.Valid) frameResult).totalFrames();
+            FrameValidationResult frameResult = validateFrames(frames);
+            if (frameResult instanceof FrameValidationResult.Invalid invalid) {
+                throw new ValidationException(invalid.error());
+            }
+            int totalFrames = ((FrameValidationResult.Valid) frameResult).totalFrames();
 
-        int flamencoPriority = calculatePriority(priority);
+            int flamencoPriority = calculatePriority(priority);
 
-        String originalName = file.getOriginalFilename() != null
-                ? file.getOriginalFilename().toLowerCase(java.util.Locale.ROOT) : "";
+            String originalName = file.getOriginalFilename() != null
+                    ? file.getOriginalFilename().toLowerCase(java.util.Locale.ROOT) : "";
 
-        if (originalName.endsWith(".zip")) {
-            return submitZip(file, safeName, frames, totalFrames, flamencoPriority, computeMode, blendFileName, username);
-        } else {
-            return submitBlend(file, safeName, frames, totalFrames, flamencoPriority, computeMode, username);
+            if (originalName.endsWith(".zip")) {
+                return submitZip(file, safeName, frames, totalFrames, flamencoPriority, computeMode, blendFileName, username);
+            } else {
+                return submitBlend(file, safeName, frames, totalFrames, flamencoPriority, computeMode, username);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
