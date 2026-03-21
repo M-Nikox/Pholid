@@ -260,6 +260,7 @@ services:
       - "traefik.http.routers.pangolin.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.pangolin.entrypoints=websecure"
       - "traefik.http.routers.pangolin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pangolin.middlewares=secure-headers@file"
       - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
 
   # ============================================================
@@ -318,8 +319,8 @@ services:
       - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GRAFANA_OIDC_CLIENT_SECRET}
       - GF_AUTH_GENERIC_OAUTH_SCOPES=openid email profile
       - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/auth
-      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/token
-      - GF_AUTH_GENERIC_OAUTH_API_URL=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/userinfo
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/userinfo
       - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=contains(groups[*], 'pangolin-admins') && 'Admin' || 'Viewer'
     volumes:
       - grafana-data:/var/lib/grafana
