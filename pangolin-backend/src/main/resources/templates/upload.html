@@ -37,8 +37,8 @@
         }
     </script>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto space-y-6">
+<body>
+    <div class="max-w-7xl mx-auto space-y-6 p-4 md:p-8">
         
         <!-- Header -->
         <header class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
@@ -117,7 +117,7 @@
                         <!-- Logout -->
                         <div class="p-2">
                             <form th:if="${currentUser != 'anonymous'}" th:action="@{/logout}" method="post">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 <button type="submit" class="avatar-dropdown-item avatar-dropdown-item--danger w-full text-left">
                                     <span>⏻</span> Sign out
                                 </button>
@@ -352,7 +352,9 @@
 
     <!-- GUIDE MODAL -->
     <!-- Log Viewer Modal -->
-    <div id="logModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);">
+    <div id="logModal" class="pangolin-modal-shell" style="display:none;">
+        <div class="pangolin-modal-backdrop" aria-hidden="true"></div>
+        <div class="pangolin-modal-content flex items-center justify-center p-4">
         <div class="glass-card w-full max-w-3xl flex flex-col relative" style="height: 75vh; overflow: hidden;">
             <!-- Header -->
             <div class="flex items-center justify-between p-6 border-b flex-shrink-0" style="border-color: rgba(255,255,255,0.06);">
@@ -376,9 +378,12 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
-    <div id="guideModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);">
+    <div id="guideModal" class="pangolin-modal-shell" style="display:none;">
+        <div class="pangolin-modal-backdrop" aria-hidden="true"></div>
+        <div class="pangolin-modal-content flex items-center justify-center p-4">
         <div class="glass-card p-8 max-w-md w-full space-y-5 relative">
             <button id="closeModal" class="absolute top-4 right-4 opacity-40 hover:opacity-100 transition-all text-xl font-black">✕</button>
             <div class="flex items-center gap-3">
@@ -395,11 +400,15 @@
                 Got it!
             </button>
         </div>
+        </div>
     </div>
 
     <!-- SCRIPTS -->
     <script th:inline="javascript">
-        window.PANGOLIN_USER = { username: [[${currentUser}]], fullName: [[${fullName}]] };
+        window.PANGOLIN_USER = {
+            username: /*[[${currentUser}]]*/ 'anonymous',
+            fullName: /*[[${fullName}]]*/ 'Anonymous'
+        };
     </script>
     <script src="/js/utils.js"></script>
     <script src="/js/farm-status.js"></script>

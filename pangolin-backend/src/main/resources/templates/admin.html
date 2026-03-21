@@ -97,7 +97,7 @@
                         </div>
                         <div class="p-2">
                             <form th:action="@{/logout}" method="post">
-                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 <button type="submit" class="avatar-dropdown-item avatar-dropdown-item--danger w-full text-left">
                                     <span>⏻</span> Sign out
                                 </button>
