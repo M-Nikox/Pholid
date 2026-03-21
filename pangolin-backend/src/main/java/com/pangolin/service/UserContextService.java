@@ -159,8 +159,10 @@ public class UserContextService {
      * <p>When auth is disabled or the current user is an admin, the original response
      * is returned unchanged.
      */
-    @SuppressWarnings("unchecked")
     public Map<String, Object> filterJobsForCurrentUser(Map<String, Object> flamencoResponse) {
+        if (flamencoResponse == null) {
+            return Map.of("jobs", List.of());
+        }
         if (!props.auth().enabled() || isAdmin()) return flamencoResponse;
 
         String username = getCurrentUsername();
