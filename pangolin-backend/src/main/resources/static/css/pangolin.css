@@ -213,8 +213,8 @@ header button.glass-card:active {
  */
 .pangolin-logo-header,
 .pangolin-logo-guide {
-    -webkit-mask-image: url('pangolin.svg');
-    mask-image: url('pangolin.svg');
+    -webkit-mask-image: url('/svg/pangolin.svg');
+    mask-image: url('/svg/pangolin.svg');
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
     -webkit-mask-size: contain;
