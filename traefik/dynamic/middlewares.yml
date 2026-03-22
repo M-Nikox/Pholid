@@ -5,7 +5,7 @@
 #
 # oauth2-proxy handles forward auth for services that don't have their own
 # OIDC integration (Flamenco manager, Prometheus).
-# Pangolin backend and Grafana handle their own auth internally.
+# Pholid backend and Grafana handle their own auth internally.
 
 http:
   middlewares:

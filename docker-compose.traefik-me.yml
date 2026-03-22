@@ -8,7 +8,7 @@
 #   DOMAIN=1.2.3.4.traefik.me
 #
 # Your services will then be available at:
-#   https://1.2.3.4.traefik.me         (Pangolin)
+#   https://1.2.3.4.traefik.me         (Pholid)
 #   https://auth.1.2.3.4.traefik.me    (Keycloak)
 #   https://grafana.1.2.3.4.traefik.me
 #   https://render.1.2.3.4.traefik.me  (Flamenco)
@@ -27,7 +27,7 @@ services:
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=pangolin-network"
+      - "--providers.docker.network=pholid-network"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
@@ -59,7 +59,7 @@ services:
 
   flamenco-manager:
     labels:
-      - "com.pangolin.service=flamenco-manager"
+      - "com.pholid.service=flamenco-manager"
       - "traefik.enable=true"
       - "traefik.http.routers.flamenco.rule=Host(`render.${DOMAIN}`)"
       - "traefik.http.routers.flamenco.entrypoints=websecure"
@@ -67,18 +67,18 @@ services:
       - "traefik.http.services.flamenco.loadbalancer.server.port=8080"
       - "traefik.http.routers.flamenco.middlewares=keycloak-auth@docker"
 
-  pangolin-backend:
+  pholid-backend:
     labels:
-      - "com.pangolin.service=backend"
+      - "com.pholid.service=backend"
       - "traefik.enable=true"
-      - "traefik.http.routers.pangolin.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.pangolin.entrypoints=websecure"
-      - "traefik.http.routers.pangolin.tls=true"
-      - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
+      - "traefik.http.routers.pholid.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pholid.entrypoints=websecure"
+      - "traefik.http.routers.pholid.tls=true"
+      - "traefik.http.services.pholid.loadbalancer.server.port=8080"
 
   prometheus:
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=true"
       - "traefik.http.routers.prometheus.rule=Host(`metrics.${DOMAIN}`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
@@ -88,7 +88,7 @@ services:
 
   grafana:
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"

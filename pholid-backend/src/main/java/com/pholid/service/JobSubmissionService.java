@@ -1,0 +1,384 @@
+/**
+ * Copyright © 2026 Pholid
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.pholid.service;
+
+import com.github.luben.zstd.ZstdInputStream;
+import com.pholid.client.FlamencoClient;
+import com.pholid.model.SubmissionResult;
+import com.pholid.config.PholidProperties;
+import com.pholid.dto.JobSubmitRequest;
+import com.pholid.dto.JobTypesResponse;
+import com.pholid.exception.ValidationException;
+import com.pholid.job.Job;
+import com.pholid.job.JobRepository;
+import com.pholid.model.FrameValidationResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.HtmlUtils;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.zip.GZIPInputStream;
+
+/**
+ * Orchestrates render job submission: validates the blend file and frame range,
+ * creates the job directory, and sends the job to Flamenco Manager.
+ *
+ * Previously all inline in RenderController (~200 lines). Now independently testable.
+ */
+@Service
+public class JobSubmissionService {
+
+    private static final Logger log = LoggerFactory.getLogger(JobSubmissionService.class);
+    private static final ConcurrentHashMap<String, ReentrantLock> SUBMIT_LOCKS = new ConcurrentHashMap<>();
+
+    private final FlamencoClient flamencoClient;
+    private final FileStorageService storageService;
+    private final ZipSubmissionService zipService;
+    private final PholidProperties props;
+    private final JobRepository jobRepository;
+    private final UserContextService userContextService;
+    private final QuotaService quotaService;
+
+    public JobSubmissionService(FlamencoClient flamencoClient,
+                                FileStorageService storageService,
+                                ZipSubmissionService zipService,
+                                PholidProperties props,
+                                JobRepository jobRepository,
+                                UserContextService userContextService,
+                                QuotaService quotaService) {
+        this.flamencoClient     = flamencoClient;
+        this.storageService     = storageService;
+        this.zipService         = zipService;
+        this.props              = props;
+        this.jobRepository      = jobRepository;
+        this.userContextService = userContextService;
+        this.quotaService       = quotaService;
+    }
+
+    /**
+     * Full submission pipeline. Throws ValidationException for bad input,
+     * or propagates RestClientException for Flamenco connectivity failures
+     * (handled by GlobalExceptionHandler).
+     *
+     * blendFileName is required for zip submissions — the filename of the render
+     * target inside the zip (e.g. "light.blend"). Ignored for direct .blend uploads.
+     *
+     * @return SubmissionResult containing the job ID and any non-blocking warnings
+     */
+    public SubmissionResult submit(MultipartFile file,
+                                   String rawProjectName,
+                                   String frames,
+                                   String priority,
+                                   String computeMode,
+                                   String blendFileName) throws IOException {
+        String username = userContextService.getCurrentUsername();
+        ReentrantLock lock = SUBMIT_LOCKS.computeIfAbsent(username, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            quotaService.checkQuota(username);
+
+            String safeName = sanitizeProjectName(rawProjectName);
+
+            FrameValidationResult frameResult = validateFrames(frames);
+            if (frameResult instanceof FrameValidationResult.Invalid invalid) {
+                throw new ValidationException(invalid.error());
+            }
+            int totalFrames = ((FrameValidationResult.Valid) frameResult).totalFrames();
+
+            int flamencoPriority = calculatePriority(priority);
+
+            String originalName = file.getOriginalFilename() != null
+                    ? file.getOriginalFilename().toLowerCase(java.util.Locale.ROOT) : "";
+
+            if (originalName.endsWith(".zip")) {
+                return submitZip(file, safeName, frames, totalFrames, flamencoPriority, computeMode, blendFileName, username);
+            } else {
+                return submitBlend(file, safeName, frames, totalFrames, flamencoPriority, computeMode, username);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    // ============================
+    // BLEND SUBMISSION PATH
+    // ============================
+
+    private SubmissionResult submitBlend(MultipartFile file,
+                                          String projectName,
+                                          String frames,
+                                          int totalFrames,
+                                          int priority,
+                                          String computeMode,
+                                          String username) throws IOException {
+        validateBlendFile(file);
+        String jobId = createBlendJobDirectory(file);
+        sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
+                storageService.getJobRoot().resolve(jobId).resolve("input.blend"), username);
+        return SubmissionResult.clean(jobId);
+    }
+
+    // ============================
+    // ZIP SUBMISSION PATH
+    // ============================
+
+    private SubmissionResult submitZip(MultipartFile file,
+                                        String projectName,
+                                        String frames,
+                                        int totalFrames,
+                                        int priority,
+                                        String computeMode,
+                                        String blendFileName,
+                                        String username) throws IOException {
+
+        if (blendFileName == null || blendFileName.isBlank()) {
+            throw new ValidationException("A blend filename is required when submitting a zip project.");
+        }
+        if (!blendFileName.toLowerCase(java.util.Locale.ROOT).endsWith(".blend")) {
+            throw new ValidationException("The render target filename must end in .blend.");
+        }
+
+        zipService.validateZipFile(file);
+
+        String jobId = generateJobId();
+        Path jobDir = storageService.getJobRoot().resolve(jobId);
+        Files.createDirectories(jobDir);
+
+        ZipSubmissionService.ExtractionResult result =
+                zipService.extractAndLocate(file, blendFileName, jobDir);
+
+        sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
+                result.blendFilePath(), username);
+
+        if (result.warnings().isEmpty()) {
+            return SubmissionResult.clean(jobId);
+        } else {
+            return SubmissionResult.withWarnings(jobId, result.warnings());
+        }
+    }
+
+    // ============================
+    // VALIDATION
+    // ============================
+
+    public FrameValidationResult validateFrames(String input) {
+        int limit = props.frames().limit();
+        int cap   = props.frames().cap();
+
+        if (!input.matches("^\\d+(-\\d+)?$")) {
+            return new FrameValidationResult.Invalid("Invalid frame format. Use 'Start-End' or a single number.");
+        }
+
+        try {
+            if (input.contains("-")) {
+                String[] parts = input.split("-");
+                int start = Integer.parseInt(parts[0]);
+                int end   = Integer.parseInt(parts[1]);
+
+                if (start > end)  return new FrameValidationResult.Invalid("Start frame must be \u2264 end frame.");
+                if (start < 1)    return new FrameValidationResult.Invalid("Frame numbers must be positive (minimum: 1)");
+                if (start > cap || end > cap)
+                                  return new FrameValidationResult.Invalid("Frame number too high. Maximum: " + cap);
+                int total = end - start + 1;
+                if (total > limit)
+                    return new FrameValidationResult.Invalid("Too many frames requested. Maximum allowed: "
+                            + limit + " (you requested: " + total + ")");
+
+                return new FrameValidationResult.Valid(start, end, total);
+            }
+
+            int frame = Integer.parseInt(input);
+            if (frame < 1)      return new FrameValidationResult.Invalid("Frame number must be positive (minimum: 1)");
+            if (frame > cap)    return new FrameValidationResult.Invalid("Frame number too high. Maximum: " + cap);
+
+            return new FrameValidationResult.Valid(frame, frame, 1);
+
+        } catch (NumberFormatException e) {
+            return new FrameValidationResult.Invalid("Invalid frame numbers.");
+        }
+    }
+
+    private void validateBlendFile(MultipartFile file) {
+        long maxBytes = props.file().maxSizeMb() * 1024L * 1024L;
+
+        String name = file.getOriginalFilename();
+        if (name == null || !name.toLowerCase().endsWith(".blend")) {
+            throw new ValidationException("Only .blend files are allowed.");
+        }
+        if (file.getSize() > maxBytes) {
+            throw new ValidationException("File too large. Maximum allowed size is "
+                    + props.file().maxSizeMb() + " MB.");
+        }
+
+        try (InputStream raw = file.getInputStream();
+             BufferedInputStream buffered = new BufferedInputStream(raw)) {
+
+            buffered.mark(4);
+            byte[] magic = buffered.readNBytes(4);
+            buffered.reset();
+
+            if (magic.length < 4) throw new ValidationException("File too small.");
+
+            try (InputStream stream = selectDecompressionStream(buffered, magic)) {
+                byte[] header = stream.readNBytes(7);
+                if (header.length < 7) throw new ValidationException("File too small or corrupted.");
+                if (!"BLENDER".equals(new String(header, StandardCharsets.US_ASCII)))
+                    throw new ValidationException("File content is not a valid Blender .blend file.");
+            }
+
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error validating blend file", e);
+            throw new ValidationException("Error reading file for validation: " + e.getMessage());
+        }
+    }
+
+    private String sanitizeProjectName(String name) {
+        String safe = HtmlUtils.htmlEscape(name);
+        int max = props.projectName().maxLength();
+        return safe.length() > max ? safe.substring(0, max) : safe;
+    }
+
+    // ============================
+    // JOB CREATION
+    // ============================
+
+    private String createBlendJobDirectory(MultipartFile file) throws IOException {
+        String jobId = generateJobId();
+        Path jobDir = storageService.getJobRoot().resolve(jobId);
+        Files.createDirectories(jobDir);
+        file.transferTo(jobDir.resolve("input.blend"));
+        return jobId;
+    }
+
+    private String generateJobId() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    }
+
+    private void sendToManager(String jobId,
+                                String projectName,
+                                String frames,
+                                int totalFrames,
+                                int priority,
+                                String computeMode,
+                                Path blendFile,
+                                String username) {
+
+        Path jobDir    = storageService.getJobRoot().resolve(jobId);
+        String jobType = resolveJobType(computeMode);
+        String typeEtag = fetchJobTypeEtag(jobType);
+
+        JobSubmitRequest request = new JobSubmitRequest(
+                "Pholid_" + projectName,
+                jobType,
+                priority,
+                "web-client",
+                typeEtag,
+                Map.of(
+                        "project",         projectName,
+                        "submitter",       "Pholid-Web",
+                        "total_frames",    String.valueOf(totalFrames),
+                        "frame_range",     frames,
+                        "compute_mode",    computeMode,
+                        "pholid.job_id", jobId
+                ),
+                buildSettings(frames, blendFile, jobDir)
+        );
+
+        Map<String, Object> response = flamencoClient.submitJob(request);
+        String flamencoJobId = response != null ? (String) response.get("id") : null;
+        log.info("Job {} submitted — flamenco_id={} priority={} type={}", jobId, flamencoJobId, priority, jobType);
+
+        // Persist the Job so history, quotas, and per-user filtering all work
+        Job job = new Job();
+        job.setPholidJobId(jobId);
+        job.setFlamencoJobId(flamencoJobId);
+        job.setName("Pholid_" + projectName);
+        job.setStatus("queued");
+        job.setProjectName(projectName);
+        job.setFrames(frames);
+        job.setSubmittedAt(OffsetDateTime.now());
+        job.setSubmittedBy(username);
+        jobRepository.save(job);
+    }
+
+    /**
+     * Calls GET /api/v3/jobs/types to trigger loading of custom JS job types,
+     * then returns the etag for the requested type. Flamenco requires this etag on submission.
+     */
+    private String fetchJobTypeEtag(String jobType) {
+        try {
+            JobTypesResponse response = flamencoClient.getJobTypes();
+            if (response == null || response.jobTypes() == null) return null;
+
+            return response.jobTypes().stream()
+                    .filter(jt -> jobType.equals(jt.name()))
+                    .map(JobTypesResponse.JobType::etag)
+                    .findFirst()
+                    .orElseGet(() -> {
+                        log.warn("Job type '{}' not found in manager job types", jobType);
+                        return null;
+                    });
+
+        } catch (Exception e) {
+            log.warn("Could not fetch job types from manager: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, Object> buildSettings(String frames, Path blendFile, Path jobDir) {
+        Path outputDir = jobDir.resolve("output");
+        Map<String, Object> settings = new LinkedHashMap<>();
+        settings.put("blendfile",             blendFile.toString());
+        settings.put("frames",                frames);
+        settings.put("render_output_path",    outputDir + "/######");
+        settings.put("render_output_root",    outputDir.toString());
+        settings.put("chunk_size",            3);
+        settings.put("format",                "PNG");
+        settings.put("fps",                   24);
+        settings.put("has_previews",          false);
+        settings.put("generate_preview_video",false);
+        settings.put("image_file_extension",  ".png");
+        settings.put("add_path_components",   0);
+        return settings;
+    }
+
+    private String resolveJobType(String computeMode) {
+        return switch (computeMode.toLowerCase()) {
+            case "gpu-optix" -> "cycles-optix-gpu";
+            case "gpu-cuda"  -> "cycles-cuda-gpu";
+            default          -> "simple-blender-render";
+        };
+    }
+
+    private int calculatePriority(String uiPriority) {
+        return switch (uiPriority) {
+            case "3" -> 80;
+            case "2" -> 60;
+            case "1" -> 40;
+            default  -> 50;
+        };
+    }
+
+    private InputStream selectDecompressionStream(InputStream in, byte[] magic) throws IOException {
+        boolean zstd = magic[0] == (byte) 0x28 && magic[1] == (byte) 0xB5
+                    && magic[2] == (byte) 0x2F && magic[3] == (byte) 0xFD;
+        boolean gzip = magic[0] == (byte) 0x1F && magic[1] == (byte) 0x8B;
+        if (zstd) return new ZstdInputStream(in);
+        if (gzip) return new GZIPInputStream(in);
+        return in;
+    }
+}

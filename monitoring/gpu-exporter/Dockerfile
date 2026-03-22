@@ -1,4 +1,4 @@
-# Copyright © 2026 Pangolin
+# Copyright © 2026 Pholid
 # SPDX-License-Identifier: Apache-2.0
 #
 # GPU metrics exporter - requires NVIDIA container runtime on the host.

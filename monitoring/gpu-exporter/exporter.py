@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pangolin GPU Prometheus Exporter
+Pholid GPU Prometheus Exporter
 Queries nvidia-smi and exposes GPU metrics for Prometheus.
 Supports multiple GPUs via the gpu_index label.
 """
@@ -24,17 +24,17 @@ logger = logging.getLogger('gpu-exporter')
 # ── Prometheus metrics ──────────────────────────────────────────────────────
 LABELS = ['gpu_index', 'gpu_name']
 
-gpu_utilization   = Gauge('pangolin_gpu_utilization_percent',    'GPU core utilisation (%)',       LABELS)
-gpu_mem_used      = Gauge('pangolin_gpu_memory_used_bytes',      'GPU VRAM used (bytes)',          LABELS)
-gpu_mem_total     = Gauge('pangolin_gpu_memory_total_bytes',     'GPU VRAM total (bytes)',         LABELS)
-gpu_mem_pct       = Gauge('pangolin_gpu_memory_used_percent',    'GPU VRAM used (%)',              LABELS)
-gpu_temperature   = Gauge('pangolin_gpu_temperature_celsius',    'GPU temperature (°C)',           LABELS)
-gpu_power_draw    = Gauge('pangolin_gpu_power_draw_watts',       'GPU power draw (W)',             LABELS)
-gpu_power_limit   = Gauge('pangolin_gpu_power_limit_watts',      'GPU power limit (W)',            LABELS)
-gpu_fan_speed     = Gauge('pangolin_gpu_fan_speed_percent',      'GPU fan speed (%)',              LABELS)
-gpu_sm_clock      = Gauge('pangolin_gpu_sm_clock_mhz',          'GPU SM clock (MHz)',             LABELS)
-gpu_mem_clock     = Gauge('pangolin_gpu_mem_clock_mhz',         'GPU memory clock (MHz)',         LABELS)
-gpu_scrape_ok     = Gauge('pangolin_gpu_scrape_ok',             '1 if last nvidia-smi scrape succeeded')
+gpu_utilization   = Gauge('pholid_gpu_utilization_percent',    'GPU core utilisation (%)',       LABELS)
+gpu_mem_used      = Gauge('pholid_gpu_memory_used_bytes',      'GPU VRAM used (bytes)',          LABELS)
+gpu_mem_total     = Gauge('pholid_gpu_memory_total_bytes',     'GPU VRAM total (bytes)',         LABELS)
+gpu_mem_pct       = Gauge('pholid_gpu_memory_used_percent',    'GPU VRAM used (%)',              LABELS)
+gpu_temperature   = Gauge('pholid_gpu_temperature_celsius',    'GPU temperature (°C)',           LABELS)
+gpu_power_draw    = Gauge('pholid_gpu_power_draw_watts',       'GPU power draw (W)',             LABELS)
+gpu_power_limit   = Gauge('pholid_gpu_power_limit_watts',      'GPU power limit (W)',            LABELS)
+gpu_fan_speed     = Gauge('pholid_gpu_fan_speed_percent',      'GPU fan speed (%)',              LABELS)
+gpu_sm_clock      = Gauge('pholid_gpu_sm_clock_mhz',          'GPU SM clock (MHz)',             LABELS)
+gpu_mem_clock     = Gauge('pholid_gpu_mem_clock_mhz',         'GPU memory clock (MHz)',         LABELS)
+gpu_scrape_ok     = Gauge('pholid_gpu_scrape_ok',             '1 if last nvidia-smi scrape succeeded')
 
 # ── nvidia-smi query ────────────────────────────────────────────────────────
 QUERY_FIELDS = [
@@ -140,7 +140,7 @@ def collect():
 
 # ── Main ────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    logger.info('Pangolin GPU Exporter starting on port %d', EXPORTER_PORT)
+    logger.info('Pholid GPU Exporter starting on port %d', EXPORTER_PORT)
     start_http_server(EXPORTER_PORT)
     logger.info('Scraping nvidia-smi every %ds', SCRAPE_INTERVAL)
 

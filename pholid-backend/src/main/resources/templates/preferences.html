@@ -1,0 +1,187 @@
+<!-- Copyright © 2026 Pholid - SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pholid — Notification Preferences</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/pholid.css">
+    <link rel="icon" type="image/svg+xml" href="/svg/pholid.svg">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pholid-cream': '#FAF3E1',
+                        'pholid-beige': '#F5E7C6',
+                        'pholid-orange': '#FA8112',
+                        'pholid-black': '#222222',
+                        'pholid-purple-dark': '#1C1328',
+                        'pholid-purple-deep': '#0F0916',
+                    },
+                    fontFamily: { 'outfit': ['Outfit', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <script th:inline="javascript">
+        window.PHOLID_USER = { username: [[${currentUser}]], fullName: [[${fullName}]] };
+    </script>
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/profile-dropdown.js" defer></script>
+</head>
+<body class="p-4 md:p-8">
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center orange-glow" style="background:var(--pholid-orange)">
+                <div class="pholid-logo-header w-8 h-8"></div>
+            </div>
+            <div>
+                <h1 class="text-3xl font-black tracking-tight font-outfit uppercase">Pholid <span class="font-light opacity-70 text-2xl">Preferences</span></h1>
+                <p class="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">Notification Settings</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="theme-selector-dropdown">
+                <button id="themeSwitcher" class="theme-selector-btn glass-card" title="Select theme" aria-haspopup="listbox">
+                    <span class="theme-current-icon">☀️</span>
+                </button>
+                <ul id="themeSelectorList" class="theme-selector-list" role="listbox" aria-label="Theme"></ul>
+            </div>
+
+            <!-- Avatar dropdown -->
+            <div class="relative" id="avatarDropdownContainer">
+                <button onclick="toggleAvatarDropdown()"
+                    class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center hover:scale-105 transition-all focus:outline-none"
+                    style="border:1.5px solid rgba(255,255,255,0.15);" title="Profile">
+                    <img id="avatarImg" th:attr="data-src='/api/profile/avatar/' + ${currentUser}"
+                         alt="" class="w-full h-full object-cover" style="display:none;">
+                    <span id="avatarInitials" class="w-full h-full items-center justify-center text-xs font-black"
+                          style="display:flex; background:var(--pholid-orange); color:var(--accent-text);">?</span>
+                </button>
+
+                <div id="avatarDropdown" class="avatar-dropdown">
+                    <div class="p-4 flex items-center gap-3" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <label for="avatarUploadInput" class="relative group cursor-pointer flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center"
+                                 style="border:2px solid rgba(255,255,255,0.15);">
+                                <img id="avatarImgLarge" th:attr="data-src='/api/profile/avatar/' + ${currentUser}"
+                                     alt="" class="w-full h-full object-cover" style="display:none;">
+                                <span id="avatarInitialsLarge" class="w-full h-full items-center justify-center text-sm font-black"
+                                      style="display:flex; background:var(--pholid-orange); color:var(--accent-text);">?</span>
+                            </div>
+                            <div class="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                                 style="background:rgba(0,0,0,0.5); font-size:12px;">📷</div>
+                        </label>
+                        <input type="file" id="avatarUploadInput" accept="image/jpeg,image/png,image/webp,image/gif"
+                               class="hidden" onchange="uploadAvatar(this)">
+                        <div class="min-w-0">
+                            <p class="font-bold text-sm truncate" th:text="${fullName}">User</p>
+                            <p class="text-[10px] opacity-50 truncate" th:text="'@' + ${currentUser}">@user</p>
+                            <p class="text-[10px] opacity-40 truncate" th:if="${email}" th:text="${email}"></p>
+                            <span th:if="${isAdmin}"
+                                  class="inline-block mt-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full"
+                                  style="background:var(--pholid-orange); color:var(--accent-text);">Admin</span>
+                        </div>
+                    </div>
+                    <div class="p-2" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <a href="/" class="avatar-dropdown-item"><span>←</span> Dashboard</a>
+                        <a th:if="${isAdmin}" href="/admin" class="avatar-dropdown-item"><span>🛡</span> Admin panel</a>
+                    </div>
+                    <div class="p-2">
+                        <form th:if="${currentUser != 'anonymous'}" th:action="@{/logout}" method="post">
+                            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="avatar-dropdown-item avatar-dropdown-item--danger w-full text-left">
+                                <span>⏻</span> Sign out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Saved banner -->
+    <div th:if="${saved}" class="p-4 glass-card border border-green-500/40 text-green-400 text-sm font-bold rounded-2xl">
+        ✓ Preferences saved successfully.
+    </div>
+
+    <!-- Preferences Form -->
+    <section class="glass-card p-6 md:p-8">
+        <form th:action="@{/preferences}" th:object="${prefs}" method="post" class="space-y-8">
+
+            <!-- Webhook Notifications -->
+            <div>
+                <h2 class="text-lg font-bold font-outfit uppercase tracking-widest mb-4 flex items-center gap-2">
+                    🔗 Webhook Notifications
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Enable webhook</p>
+                            <p class="text-xs opacity-40 mt-0.5">POST a JSON payload to your URL when jobs complete or fail</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{webhookEnabled}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pholid-orange"></div>
+                        </label>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold opacity-50 uppercase tracking-widest">Webhook URL</label>
+                        <input type="url" th:field="*{webhookUrl}"
+                               placeholder="https://hooks.example.com/notify"
+                               class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-pholid-orange transition-all">
+                        <p class="text-[10px] opacity-40">Payload includes: jobId, status, project, submittedBy, completedAt</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notify When -->
+            <div>
+                <h2 class="text-lg font-bold font-outfit uppercase tracking-widest mb-4">Notify When</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Job completed</p>
+                            <p class="text-xs opacity-40 mt-0.5">Fire webhook when a render job finishes successfully</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{notifyOnComplete}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pholid-orange"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-4 glass-card bg-white/5 rounded-xl">
+                        <div>
+                            <p class="text-sm font-semibold">Job failed</p>
+                            <p class="text-xs opacity-40 mt-0.5">Fire webhook when a render job fails</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" th:field="*{notifyOnFailure}" class="sr-only peer">
+                            <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pholid-orange"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save button -->
+            <button type="submit"
+                    class="w-full py-4 rounded-2xl font-black text-sm tracking-[0.1em] hover:brightness-110 active:scale-[0.98] transition-all shadow-xl uppercase"
+                    style="background:var(--pholid-orange);color:var(--accent-text)">
+                Save Preferences
+            </button>
+        </form>
+    </section>
+
+    <footer class="text-center py-8 opacity-20 text-[10px] font-black tracking-[0.4em] uppercase">
+        <a href="https://github.com/M-Nikox/Pholid">Pholid © 2026</a>
+    </footer>
+</div>
+</body>
+</html>

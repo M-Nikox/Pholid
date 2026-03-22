@@ -5,13 +5,13 @@ services:
   # ============================================================
   traefik:
     image: traefik:v3.3
-    container_name: pangolin-traefik
+    container_name: pholid-traefik
     restart: unless-stopped
     command:
       - "--api.dashboard=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=pangolin-network"
+      - "--providers.docker.network=pholid-network"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
@@ -29,29 +29,29 @@ services:
       - traefik-certs:/certs
       - ./traefik/dynamic:/dynamic:ro
     networks:
-      - pangolin-network
+      - pholid-network
     labels:
       - "traefik.enable=false"
 
   # ============================================================
-  # POSTGRESQL - Shared database (Keycloak + Pangolin)
+  # POSTGRESQL - Shared database (Keycloak + Pholid)
   # ============================================================
   postgresql:
     image: postgres:17
-    container_name: pangolin-postgresql
+    container_name: pholid-postgresql
     restart: unless-stopped
     environment:
       - POSTGRES_DB=keycloak
       - POSTGRES_USER=keycloak
       - POSTGRES_PASSWORD=${KEYCLOAK_PG_PASS}
-      - PANGOLIN_POSTGRES_DB=${POSTGRES_DB}
-      - PANGOLIN_POSTGRES_USER=${POSTGRES_USER}
-      - PANGOLIN_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PHOLID_POSTGRES_DB=${POSTGRES_DB}
+      - PHOLID_POSTGRES_USER=${POSTGRES_USER}
+      - PHOLID_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgresql-data:/var/lib/postgresql/data
       - ./postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     networks:
-      - pangolin-network
+      - pholid-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
       interval: 30s
@@ -65,7 +65,7 @@ services:
   # ============================================================
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
-    container_name: pangolin-keycloak
+    container_name: pholid-keycloak
     restart: unless-stopped
     command: start
     environment:
@@ -82,7 +82,7 @@ services:
     expose:
       - "8080"
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       postgresql:
         condition: service_healthy
@@ -104,12 +104,12 @@ services:
   # ============================================================
   oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.2
-    container_name: pangolin-oauth2-proxy
+    container_name: pholid-oauth2-proxy
     restart: unless-stopped
     command:
       - "--provider=keycloak-oidc"
-      - "--oidc-issuer-url=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}"
-      - "--client-id=${OAUTH2_PROXY_CLIENT_ID:-pangolin-proxy}"
+      - "--oidc-issuer-url=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pholid}"
+      - "--client-id=${OAUTH2_PROXY_CLIENT_ID:-pholid-proxy}"
       - "--client-secret=${OAUTH2_PROXY_CLIENT_SECRET}"
       - "--cookie-secret=${OAUTH2_PROXY_COOKIE_SECRET}"
       - "--cookie-secure=true"
@@ -126,7 +126,7 @@ services:
     expose:
       - "4180"
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       keycloak:
         condition: service_healthy
@@ -144,7 +144,7 @@ services:
     build:
       context: ./flamenco/manager
       dockerfile: Dockerfile
-    container_name: pangolin-flamenco-manager
+    container_name: pholid-flamenco-manager
     hostname: flamenco-manager
     restart: unless-stopped
     expose:
@@ -153,14 +153,14 @@ services:
       - flamenco-shared:/shared
       - ./flamenco/manager/flamenco-manager.yaml:/flamenco-3.8.2-linux-amd64/flamenco-manager.yaml:ro
     networks:
-      - pangolin-network
+      - pholid-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/v3/configuration"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
-      - "com.pangolin.service=flamenco-manager"
+      - "com.pholid.service=flamenco-manager"
       - "traefik.enable=true"
       - "traefik.http.routers.flamenco.rule=Host(`render.${DOMAIN}`)"
       - "traefik.http.routers.flamenco.entrypoints=websecure"
@@ -180,7 +180,7 @@ services:
       flamenco-manager:
         condition: service_healthy
     networks:
-      - pangolin-network
+      - pholid-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - NVIDIA_VISIBLE_DEVICES=all
@@ -203,39 +203,39 @@ services:
               count: all
               capabilities: [gpu, compute, utility]
     labels:
-      - "com.pangolin.service=flamenco-worker"
+      - "com.pholid.service=flamenco-worker"
       - "traefik.enable=false"
 
   # ============================================================
-  # PANGOLIN BACKEND - Submission API
+  # PHOLID BACKEND - Submission API
   # ============================================================
-  pangolin-backend:
+  pholid-backend:
     build:
-      context: ./pangolin-backend
+      context: ./pholid-backend
       dockerfile: Dockerfile
-    container_name: pangolin-backend
+    container_name: pholid-backend
     restart: unless-stopped
     expose:
       - "8080"
     volumes:
       - flamenco-shared:/shared
-      - pangolin-userdata:/userdata
+      - pholid-userdata:/userdata
     networks:
-      - pangolin-network
+      - pholid-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - STORAGE_ROOT=/shared
       - USERDATA_ROOT=/userdata
-      - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false}
-      - PANGOLIN_AUTH_ENABLED=${PANGOLIN_AUTH_ENABLED:-false}
-      - POSTGRES_DB=${POSTGRES_DB:-pangolin}
-      - POSTGRES_USER=${POSTGRES_USER:-pangolin}
+      - PHOLID_DELETE_ENABLED=${ENABLE_DELETE:-false}
+      - PHOLID_AUTH_ENABLED=${PHOLID_AUTH_ENABLED:-false}
+      - POSTGRES_DB=${POSTGRES_DB:-pholid}
+      - POSTGRES_USER=${POSTGRES_USER:-pholid}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-pangolin}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-pholid}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
       # Browser-facing URIs -- must use the public domain, not the internal keycloak:8080
-      - OIDC_AUTH_URI=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/auth
-      - OIDC_LOGOUT_URI=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/logout
+      - OIDC_AUTH_URI=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pholid}/protocol/openid-connect/auth
+      - OIDC_LOGOUT_URI=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pholid}/protocol/openid-connect/logout
       - SPRING_FLYWAY_ENABLED=true
       - SPRING_FLYWAY_LOCATIONS=classpath:db/migration
       - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
@@ -255,20 +255,20 @@ services:
       retries: 5
       start_period: 60s
     labels:
-      - "com.pangolin.service=backend"
+      - "com.pholid.service=backend"
       - "traefik.enable=true"
-      - "traefik.http.routers.pangolin.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.pangolin.entrypoints=websecure"
-      - "traefik.http.routers.pangolin.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.pangolin.middlewares=secure-headers@file"
-      - "traefik.http.services.pangolin.loadbalancer.server.port=8080"
+      - "traefik.http.routers.pholid.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pholid.entrypoints=websecure"
+      - "traefik.http.routers.pholid.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pholid.middlewares=secure-headers@file"
+      - "traefik.http.services.pholid.loadbalancer.server.port=8080"
 
   # ============================================================
   # PROMETHEUS - Metrics Collection
   # ============================================================
   prometheus:
     image: prom/prometheus:v3.10.0
-    container_name: pangolin-prometheus
+    container_name: pholid-prometheus
     restart: unless-stopped
     expose:
       - "9090"
@@ -282,14 +282,14 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
-      - pangolin-network
+      - pholid-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=true"
       - "traefik.http.routers.prometheus.rule=Host(`metrics.${DOMAIN}`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
@@ -302,7 +302,7 @@ services:
   # ============================================================
   grafana:
     image: grafana/grafana:12.3.4
-    container_name: pangolin-grafana
+    container_name: pholid-grafana
     restart: unless-stopped
     expose:
       - "3000"
@@ -318,16 +318,16 @@ services:
       - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GRAFANA_OIDC_CLIENT_ID:-grafana}
       - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GRAFANA_OIDC_CLIENT_SECRET}
       - GF_AUTH_GENERIC_OAUTH_SCOPES=openid email profile
-      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/auth
-      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/token
-      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pangolin}/protocol/openid-connect/userinfo
-      - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=contains(groups[*], 'pangolin-admins') && 'Admin' || 'Viewer'
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://auth.${DOMAIN}/realms/${KEYCLOAK_REALM:-pholid}/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pholid}/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/${KEYCLOAK_REALM:-pholid}/protocol/openid-connect/userinfo
+      - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=contains(groups[*], 'pholid-admins') && 'Admin' || 'Viewer'
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       - prometheus
     healthcheck:
@@ -336,7 +336,7 @@ services:
       timeout: 10s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
@@ -348,7 +348,7 @@ services:
   # ============================================================
   cadvisor:
     image: ghcr.io/google/cadvisor:0.56.2
-    container_name: pangolin-cadvisor
+    container_name: pholid-cadvisor
     restart: unless-stopped
     privileged: true
     volumes:
@@ -358,12 +358,12 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     networks:
-      - pangolin-network
+      - pholid-network
     command:
       - '--housekeeping_interval=30s'
       - '--docker_only=true'
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=false"
 
   # ============================================================
@@ -373,7 +373,7 @@ services:
     build:
       context: ./monitoring/flamenco-exporter
       dockerfile: Dockerfile
-    container_name: pangolin-flamenco-exporter
+    container_name: pholid-flamenco-exporter
     restart: unless-stopped
     expose:
       - "9090"
@@ -390,7 +390,7 @@ services:
       - REQUEST_TIMEOUT=${EXPORTER_REQUEST_TIMEOUT:-10}
       - LOG_LEVEL=${EXPORTER_LOG_LEVEL:-INFO}
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       flamenco-manager:
         condition: service_healthy
@@ -402,7 +402,7 @@ services:
       timeout: 5s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=false"
 
   # ============================================================
@@ -412,7 +412,7 @@ services:
     build:
       context: ./monitoring/gpu-exporter
       dockerfile: Dockerfile
-    container_name: pangolin-gpu-exporter
+    container_name: pholid-gpu-exporter
     restart: unless-stopped
     runtime: nvidia
     expose:
@@ -426,7 +426,7 @@ services:
     volumes:
       - /usr/lib/wsl:/usr/lib/wsl:ro
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       - prometheus
     healthcheck:
@@ -435,15 +435,15 @@ services:
       timeout: 5s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
       - "traefik.enable=false"
 
 # ============================================================
 # NETWORKS
 # ============================================================
 networks:
-  pangolin-network:
-    name: pangolin-network
+  pholid-network:
+    name: pholid-network
     driver: bridge
     ipam:
       config:
@@ -459,4 +459,4 @@ volumes:
   prometheus-data:
   grafana-data:
   traefik-certs:
-  pangolin-userdata:
+  pholid-userdata:

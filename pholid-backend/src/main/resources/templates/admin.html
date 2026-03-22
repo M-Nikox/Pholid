@@ -1,0 +1,266 @@
+<!-- Copyright © 2026 Pholid - SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pholid — Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/pholid.css">
+    <link rel="icon" type="image/svg+xml" href="/svg/pholid.svg">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pholid-cream': '#FAF3E1',
+                        'pholid-beige': '#F5E7C6',
+                        'pholid-orange': '#FA8112',
+                        'pholid-black': '#222222',
+                        'pholid-purple-dark': '#1C1328',
+                        'pholid-purple-deep': '#0F0916',
+                    },
+                    fontFamily: { 'outfit': ['Outfit', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <script src="/js/theme.js" defer></script>
+    <script th:inline="javascript">
+        window.PHOLID_USER = { username: [[${currentUser}]], fullName: [[${fullName}]] };
+    </script>
+    <script src="/js/profile-dropdown.js" defer></script>
+</head>
+<body class="p-4 md:p-8">
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center orange-glow" style="background:var(--pholid-orange)">
+                <div class="pholid-logo-header w-8 h-8"></div>
+            </div>
+            <div>
+                <h1 class="text-3xl font-black tracking-tight font-outfit uppercase">Pholid <span class="font-light opacity-70 text-2xl">Admin</span></h1>
+                <p class="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">Administration Panel</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="theme-selector-dropdown">
+                    <button id="themeSwitcher" class="theme-selector-btn glass-card" title="Select theme" aria-haspopup="listbox">
+                        <span class="theme-current-icon">☀️</span>
+                    </button>
+                    <ul id="themeSelectorList" class="theme-selector-list" role="listbox" aria-label="Theme"></ul>
+                </div>
+
+                <!-- Avatar dropdown -->
+                <div class="relative" id="avatarDropdownContainer">
+                    <button onclick="toggleAvatarDropdown()"
+                        class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center hover:scale-105 transition-all focus:outline-none"
+                        style="border:1.5px solid rgba(255,255,255,0.15);" title="Profile">
+                        <img id="avatarImg" th:attr="data-src='/api/profile/avatar/' + ${currentUser}"
+                             alt="" class="w-full h-full object-cover" style="display:none;">
+                        <span id="avatarInitials" class="w-full h-full items-center justify-center text-xs font-black"
+                              style="display:flex; background:var(--pholid-orange); color:var(--accent-text);">?</span>
+                    </button>
+
+                    <div id="avatarDropdown" class="avatar-dropdown">
+                        <div class="p-4 flex items-center gap-3" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <label for="avatarUploadInput" class="relative group cursor-pointer flex-shrink-0">
+                                <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center"
+                                     style="border:2px solid rgba(255,255,255,0.15);">
+                                    <img id="avatarImgLarge" th:attr="data-src='/api/profile/avatar/' + ${currentUser}"
+                                         alt="" class="w-full h-full object-cover" style="display:none;">
+                                    <span id="avatarInitialsLarge" class="w-full h-full items-center justify-center text-sm font-black"
+                                          style="display:flex; background:var(--pholid-orange); color:var(--accent-text);">?</span>
+                                </div>
+                                <div class="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                                     style="background:rgba(0,0,0,0.5); font-size:12px;">📷</div>
+                            </label>
+                            <input type="file" id="avatarUploadInput" accept="image/jpeg,image/png,image/webp,image/gif"
+                                   class="hidden" onchange="uploadAvatar(this)">
+                            <div class="min-w-0">
+                                <p class="font-bold text-sm truncate" th:text="${fullName}">User</p>
+                                <p class="text-[10px] opacity-50 truncate" th:text="'@' + ${currentUser}">@user</p>
+                                <p class="text-[10px] opacity-40 truncate" th:if="${email}" th:text="${email}"></p>
+                                <span class="inline-block mt-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full"
+                                      style="background:var(--pholid-orange); color:var(--accent-text);">Admin</span>
+                            </div>
+                        </div>
+                        <div class="p-2" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <a href="/" class="avatar-dropdown-item"><span>←</span> Dashboard</a>
+                            <a href="/preferences" class="avatar-dropdown-item"><span>⚙</span> Preferences</a>
+                        </div>
+                        <div class="p-2">
+                            <form th:action="@{/logout}" method="post">
+                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="avatar-dropdown-item avatar-dropdown-item--danger w-full text-left">
+                                    <span>⏻</span> Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <a href="/preferences" class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pholid-orange transition-all">⚙ Preferences</a>
+        </div>
+    </header>
+
+    <!-- Farm Status Card -->
+    <section class="glass-card p-6">
+        <h2 class="text-xl font-bold font-outfit uppercase tracking-widest mb-4">Farm Status</h2>
+        <div th:if="${farmStatus == null}" class="text-sm opacity-40 italic">Farm status unavailable — could not reach Flamenco.</div>
+        <div th:unless="${farmStatus == null}" class="flex flex-wrap gap-6">
+            <div class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-40">Status</span>
+                <span class="text-sm font-bold capitalize"
+                      th:classappend="${farmStatus['status'] == 'active'} ? 'text-green-400' :
+                                     (${farmStatus['status'] == 'idle'} ? 'text-green-400' :
+                                     (${farmStatus['status'] == 'inoperative'} ? 'text-red-400' : 'text-yellow-400'))"
+                      th:text="${farmStatus['status'] ?: 'unknown'}">unknown</span>
+            </div>
+            <div class="flex flex-col gap-1" th:if="${farmStatus['nr_of_workers'] != null}">
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-40">Workers</span>
+                <span class="text-sm font-bold" th:text="${farmStatus['nr_of_workers']}">0</span>
+            </div>
+            <div class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-40">Total Jobs</span>
+                <span class="text-sm font-bold" th:text="${#lists.size(jobs)}">0</span>
+            </div>
+            <div class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-40">Active Now</span>
+                <span class="text-sm font-bold"
+                      th:text="${#lists.size(jobs.?[status == 'active' or status == 'queued'])}">0</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- All Jobs -->
+    <section class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold font-outfit uppercase tracking-widest">All Jobs</h2>
+            <span class="text-xs font-bold opacity-40 uppercase tracking-widest"
+                  th:text="${#lists.size(jobs)} + ' total'">0 total</span>
+        </div>
+
+        <div th:if="${#lists.isEmpty(jobs)}" class="text-center py-8 opacity-30 italic text-sm">No jobs found.</div>
+
+        <div th:unless="${#lists.isEmpty(jobs)}" class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="border-b" style="border-color: rgba(255,255,255,0.08);">
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Job ID</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Project</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Submitted By</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Status</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Progress</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Frames</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="job : ${jobs}"
+                        class="border-b hover:bg-white/5 transition-colors"
+                        style="border-color: rgba(255,255,255,0.04);">
+                        <td class="py-3 px-2 font-mono opacity-60 text-[10px]" th:text="${job.pholidJobId}">-</td>
+                        <td class="py-3 px-2 font-semibold" th:text="${job.projectName ?: job.name}">-</td>
+                        <td class="py-3 px-2 opacity-70" th:text="${job.submittedBy ?: '—'}">-</td>
+                        <td class="py-3 px-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest"
+                                  th:classappend="${job.status == 'completed'} ? 'bg-green-500/20 text-green-400' :
+                                                 (${job.status == 'failed'}    ? 'bg-red-500/20 text-red-400' :
+                                                 (${job.status == 'canceled'}  ? 'bg-orange-500/20 text-orange-400' :
+                                                 (${job.status == 'active'}    ? 'bg-blue-500/20 text-blue-400' :
+                                                 'bg-white/10 text-white/60')))"
+                                  th:text="${job.status}">-</span>
+                        </td>
+                        <td class="py-3 px-2">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1.5 rounded-full overflow-hidden bg-white/10" style="min-width:60px">
+                                    <div class="h-full rounded-full transition-all"
+                                         style="background:var(--pholid-orange)"
+                                         th:style="'background:var(--pholid-orange);width:' + ${job.progress} + '%'"></div>
+                                </div>
+                                <span class="text-[10px] opacity-60 font-bold" th:text="${job.progress} + '%'">0%</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-2 opacity-70 font-mono" th:text="${job.frames ?: '—'}">-</td>
+                        <td class="py-3 px-2 opacity-50 font-mono text-[10px]"
+                            th:text="${#temporals.format(job.submittedAt, 'yyyy-MM-dd HH:mm')}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Audit Log -->
+    <section class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold font-outfit uppercase tracking-widest">Audit Log</h2>
+            <span class="text-xs font-bold opacity-40 uppercase tracking-widest"
+                  th:text="${auditLogs.totalElements} + ' entries'">0 entries</span>
+        </div>
+
+        <div th:if="${auditLogs.isEmpty()}" class="text-center py-8 opacity-30 italic text-sm">No audit log entries.</div>
+
+        <div th:unless="${auditLogs.isEmpty()}" class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="border-b" style="border-color: rgba(255,255,255,0.08);">
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Timestamp</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Action</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Resource</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Resource ID</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">User</th>
+                        <th class="text-left py-3 px-2 font-bold opacity-50 uppercase tracking-widest">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="entry : ${auditLogs}"
+                        class="border-b hover:bg-white/5 transition-colors"
+                        style="border-color: rgba(255,255,255,0.04);">
+                        <td class="py-3 px-2 font-mono opacity-50 text-[10px]"
+                            th:text="${#temporals.format(entry.timestamp, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                        <td class="py-3 px-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest"
+                                  style="background:rgba(250,129,18,0.15);color:var(--pholid-orange)"
+                                  th:text="${entry.action}">-</span>
+                        </td>
+                        <td class="py-3 px-2 opacity-70" th:text="${entry.resourceType}">-</td>
+                        <td class="py-3 px-2 font-mono opacity-60" th:text="${entry.resourceId}">-</td>
+                        <td class="py-3 px-2 opacity-70" th:text="${entry.username}">-</td>
+                        <td class="py-3 px-2 opacity-50" th:text="${entry.details}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Audit log pagination -->
+        <div class="flex items-center justify-between mt-6" th:if="${auditLogs.totalPages > 1}">
+            <a th:if="${auditPage > 0}"
+               th:href="@{/admin(auditPage=${auditPage - 1}, auditSize=${auditSize})}"
+               class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pholid-orange transition-all">
+                ← Previous
+            </a>
+            <span th:if="${auditPage == 0}" class="px-4 py-2 opacity-20 text-xs font-bold uppercase tracking-widest">← Previous</span>
+            <span class="text-xs opacity-40 font-bold uppercase tracking-widest"
+                  th:text="'Page ' + (${auditPage} + 1) + ' of ' + ${auditLogs.totalPages}">Page 1</span>
+            <a th:if="${auditPage + 1 < auditLogs.totalPages}"
+               th:href="@{/admin(auditPage=${auditPage + 1}, auditSize=${auditSize})}"
+               class="px-4 py-2 glass-card text-xs font-bold uppercase tracking-widest hover:border-pholid-orange transition-all">
+                Next →
+            </a>
+            <span th:if="${auditPage + 1 >= auditLogs.totalPages}" class="px-4 py-2 opacity-20 text-xs font-bold uppercase tracking-widest">Next →</span>
+        </div>
+    </section>
+
+    <footer class="text-center py-8 opacity-20 text-[10px] font-black tracking-[0.4em] uppercase">
+        <a href="https://github.com/M-Nikox/Pholid">Pholid © 2026</a> &bull; Admin Panel
+    </footer>
+</div>
+</body>
+</html>

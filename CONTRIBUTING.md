@@ -1,6 +1,6 @@
-# Contributing to Pangolin
+# Contributing to Pholid
 
-Thank you for your interest in contributing to Pangolin!  
+Thank you for your interest in contributing to Pholid!  
 
 This document outlines the guidelines for contributing, reporting issues, and submitting improvements. Even though this is primarily a personal project, contributions are welcome.
 

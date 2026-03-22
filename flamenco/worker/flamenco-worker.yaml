@@ -1,7 +1,7 @@
 _meta:
   version: 3
 
-worker_name: "Pangolin Worker"
+worker_name: "Pholid Worker"
 manager_url: "http://flamenco-manager:8080"
 
 # Authentication - MUST MATCH manager exactly

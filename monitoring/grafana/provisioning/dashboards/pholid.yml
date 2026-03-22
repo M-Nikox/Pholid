@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: 'Pholid Dashboards'
+    orgId: 1
+    folder: 'Pholid'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

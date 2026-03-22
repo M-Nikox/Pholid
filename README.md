@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="assets\pangolin-readme.svg" width="180" alt="Pangolin Logo">
+  <img src="assets\pholid-readme.svg" width="180" alt="Pholid Logo">
 </p>
 
-<h1 align="center">Pangolin</h1>
+<h1 align="center">Pholid</h1>
 <h3 align="center">Distributed GPU-Accelerated Render Orchestrator</h3>
 
 <p align="center">
-  <a href="https://github.com/M-Nikox/Pangolin/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pangolin?label=stable&color=4c9a2a" alt="Stable Release"></a>
-  <a href="https://github.com/M-Nikox/Pangolin/tree/v2"><img src="https://img.shields.io/badge/v2--dev-in%20development-orange" alt="v2 Dev"></a>
-  <a href="https://github.com/M-Nikox/Pangolin/actions"><img src="https://github.com/M-Nikox/Pangolin/actions/workflows/ci.yml/badge.svg?branch=v2" alt="Tests"></a>
+  <a href="https://github.com/M-Nikox/Pholid/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pholid?label=stable&color=4c9a2a" alt="Stable Release"></a>
+  <a href="https://github.com/M-Nikox/Pholid/tree/v2"><img src="https://img.shields.io/badge/v2--dev-in%20development-orange" alt="v2 Dev"></a>
+  <a href="https://github.com/M-Nikox/Pholid/actions"><img src="https://github.com/M-Nikox/Pholid/actions/workflows/ci.yml/badge.svg?branch=v2" alt="Tests"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
   <img src="https://img.shields.io/badge/blender-GPU%20rendering-e87d0d" alt="Blender">
   <img src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -16,7 +16,7 @@
 
 ---
 
-Pangolin is a Docker-native render orchestration platform for GPU-accelerated Blender workloads. It handles multi-user job submission, GPU worker coordination, and real-time observability in a single deployable stack.
+Pholid is a Docker-native render orchestration platform for GPU-accelerated Blender workloads. It handles multi-user job submission, GPU worker coordination, and real-time observability in a single deployable stack.
 
 Free and open source, forever.
 
@@ -32,7 +32,7 @@ cp .env.example .env   # fill in your values
 docker compose up -d --build
 ```
 
-Deployment completes in under one minute. Pangolin will be available at `http://localhost:8080`.
+Deployment completes in under one minute. Pholid will be available at `http://localhost:8080`.
 
 > Initial Grafana database creation may take a short moment on first boot.
 
@@ -54,7 +54,7 @@ v2 introduces full multi-user support via Keycloak SSO, per-user job isolation, 
 ### What's working in v2 dev mode
 
 - Keycloak login and logout with session management
-- Group-based admin detection (`pangolin-admins`)
+- Group-based admin detection (`pholid-admins`)
 - User profiles - avatar upload, full name and email from OIDC token
 - Notification preferences
 - Job submission with per-user filtering and quota enforcement
@@ -82,7 +82,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 | Service | URL |
 |---------|-----|
-| Pangolin | `http://localhost:8080` |
+| Pholid | `http://localhost:8080` |
 | Keycloak | `http://localhost:8180` |
 | Grafana | `http://localhost:3000` |
 | Flamenco | `http://localhost:8280` |
@@ -92,7 +92,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 ## Architecture
 
-Pangolin separates responsibilities cleanly across distinct services:
+Pholid separates responsibilities cleanly across distinct services:
 
 - **Control plane** - Spring Boot backend handles job submission, quota enforcement, user context, and the UI
 - **Job distribution** - Flamenco, extended with custom GPU-aware job types for CUDA and OptiX workflows
@@ -119,9 +119,9 @@ Pangolin separates responsibilities cleanly across distinct services:
 
 ## GPU Job Types
 
-- **CUDA (Linux + WSL2):** Adapted from the [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Issues → [Pangolin tracker](https://github.com/M-Nikox/Pangolin/issues).
+- **CUDA (Linux + WSL2):** Adapted from the [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Issues → [Pholid tracker](https://github.com/M-Nikox/Pholid/issues).
 
-- **OptiX (Linux):** Original community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin. Issues → [Flamenco tracker](https://projects.blender.org/studio/flamenco/issues).
+- **OptiX (Linux):** Original community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pholid. Issues → [Flamenco tracker](https://projects.blender.org/studio/flamenco/issues).
 
 ---
 
@@ -146,7 +146,7 @@ Pangolin separates responsibilities cleanly across distinct services:
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.  
-Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23).
+Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pholid/discussions/23).
 
 ---
 

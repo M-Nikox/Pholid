@@ -1,4 +1,4 @@
-# Copyright © 2026 Pangolin
+# Copyright © 2026 Pholid
 # SPDX-License-Identifier: Apache-2.0
 
 FROM python:3.14.2-slim

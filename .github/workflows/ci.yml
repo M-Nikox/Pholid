@@ -37,14 +37,14 @@ jobs:
           cache: maven
 
       - name: Run tests
-        working-directory: pangolin-backend
+        working-directory: pholid-backend
         run: mvn test -B --no-transfer-progress
 
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2.23.0
         if: always()
         with:
-          files: pangolin-backend/target/surefire-reports/*.xml
+          files: pholid-backend/target/surefire-reports/*.xml
           comment_mode: off
 
       - name: Log PR info
