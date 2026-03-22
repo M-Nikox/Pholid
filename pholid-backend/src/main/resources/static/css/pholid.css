@@ -126,7 +126,7 @@ input.glass-input:focus {
 /* Drop zone - hover + drag-over state */
 #dropZone {
     transition: border-color 200ms ease-out, background 200ms ease-out,
-                transform 150ms ease-out, box-shadow 200ms ease-out;
+    transform 150ms ease-out, box-shadow 200ms ease-out;
 }
 #dropZone:hover {
     border-color: rgba(var(--pholid-orange-rgb), 0.55);
@@ -137,7 +137,7 @@ input.glass-input:focus {
     background: rgba(var(--pholid-orange-rgb), 0.07);
     transform: scale(1.01);
     box-shadow: 0 0 0 3px rgba(var(--pholid-orange-rgb), 0.2),
-                inset 0 0 24px rgba(var(--pholid-orange-rgb), 0.05);
+    inset 0 0 24px rgba(var(--pholid-orange-rgb), 0.05);
 }
 #dropZone.drag-over span:first-of-type {
     transform: scale(1.15);
@@ -159,7 +159,7 @@ header button.glass-card:active {
 /* Job cards - lift + left border accent */
 .job-card {
     transition: transform 150ms ease-out, box-shadow 150ms ease-out,
-                border-left-color 150ms ease-out;
+    border-left-color 150ms ease-out;
     border-left: 3px solid transparent !important;
 }
 .job-card:hover {
@@ -180,7 +180,7 @@ header button.glass-card:active {
 /* Submit button */
 #submitBtn {
     transition: filter 150ms ease-out, transform 150ms ease-out,
-                background-color 300ms ease !important;
+    background-color 300ms ease !important;
 }
 #submitBtn:active {
     transform: scale(0.984);
@@ -519,9 +519,9 @@ header button.glass-card:active {
 /* ===== JOB PROGRESS BAR — theme-aware gradient ===== */
 .job-progress-fill {
     background: linear-gradient(
-        to right,
-        var(--pholid-orange),
-        rgba(var(--pholid-orange-rgb), 0.65)
+            to right,
+            var(--pholid-orange),
+            rgba(var(--pholid-orange-rgb), 0.65)
     );
 }
 
@@ -609,4 +609,15 @@ header button.glass-card:active {
 /* Flatten the bottom corners of the summary when the menu is open */
 .pholid-collapsible[open] summary {
     border-radius: 12px 12px 0 0;
+}
+
+/* Fix for the submit button reverting to wrong color after submission */
+#renderForm button[type="submit"] {
+    background: var(--pholid-orange);
+    color: var(--accent-text);
+    transition: background 0.3s ease, transform 0.1s ease;
+}
+
+#renderForm button[type="submit"].btn-success {
+    background: #16a34a !important;
 }
