@@ -21,7 +21,7 @@ Free and open source, forever.
 
 ---
 
-## v2 — Multi-User Auth (In Development)
+## v2 - Multi-User Auth (In Development)
 
 v2 introduces full multi-user support via Keycloak SSO, per-user job isolation, quota enforcement, avatar profiles, and a complete Prometheus + Grafana observability stack.
 
