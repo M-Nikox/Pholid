@@ -2,12 +2,12 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'pangolin'
+    cluster: 'pholid'
     environment: 'production'
 
 scrape_configs:
-  # Pangolin Backend API Metrics
-  - job_name: 'pangolin-backend'
+  # Pholid Backend API Metrics
+  - job_name: 'pholid-backend'
     static_configs:
       - targets: ['backend:3001']
     metrics_path: '/api/metrics'

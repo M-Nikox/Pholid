@@ -1,4 +1,4 @@
-# Copyright © 2026 Pangolin
+# Copyright © 2026 Pholid
 # SPDX-License-Identifier: Apache-2.0
 
 # CUDA 13.1.1 runtime on Ubuntu 24.04 - exposes GPU to Blender (Cycles CUDA/OptiX)

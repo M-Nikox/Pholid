@@ -1,7 +1,7 @@
 _meta:
   version: 3
 
-manager_name: "Pangolin Flamenco Manager"
+manager_name: "Pholid Flamenco Manager"
 database: "/shared/flamenco-manager.db"
 listen: ":8080"
 autodiscoverable: true

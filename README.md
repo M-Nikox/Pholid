@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="assets\pangolin-readme.svg" width="180" alt="Pangolin Logo">
+  <img src="assets\pholid-readme.svg" width="300" alt="Pholid Logo">
 </p>
 
-<h1 align="center">Pangolin</h1>
+<h1 align="center">Pholid</h1>
 <h3 align="center">Distributed GPU-Accelerated Render Orchestrator</h3>
 
 <p align="center">
-  <a href="https://github.com/M-Nikox/Pangolin/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pangolin?label=stable&color=4c9a2a" alt="Stable Release"></a>
-  <a href="https://github.com/M-Nikox/Pangolin/actions"><img src="https://github.com/M-Nikox/Pangolin/actions/workflows/ci.yml/badge.svg?branch=master" alt="Tests"></a>
+  <a href="https://github.com/M-Nikox/Pholid/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pholid?label=stable&color=4c9a2a" alt="Stable Release"></a>
+  <a href="https://github.com/M-Nikox/Pholid/actions"><img src="https://github.com/M-Nikox/Pholid/actions/workflows/ci.yml/badge.svg?branch=master" alt="Tests"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
   <img src="https://img.shields.io/badge/blender-GPU%20rendering-e87d0d" alt="Blender">
   <img src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -15,7 +15,7 @@
 
 ---
 
-Pangolin is a Docker-native render orchestration platform for GPU-accelerated Blender workloads. It handles job submission, GPU worker coordination, and real-time observability in a single deployable stack.
+Pholid is a Docker-native render orchestration platform for GPU-accelerated Blender workloads. It handles job submission, GPU worker coordination, and real-time observability in a single deployable stack.
 
 Free and open source, forever.
 
@@ -32,7 +32,7 @@ Deployment completes in under one minute.
 
 | Service | URL |
 |---------|-----|
-| Pangolin | `http://localhost` |
+| Pholid | `http://localhost` |
 | Flamenco manager | `http://localhost:88` |
 | Grafana | `http://localhost:3000` |
 | Prometheus | `http://localhost:9090` |
@@ -43,7 +43,7 @@ Deployment completes in under one minute.
 
 ## Architecture
 
-Pangolin separates responsibilities cleanly across distinct services:
+Pholid separates responsibilities cleanly across distinct services:
 
 - **Control plane** - Spring Boot backend handles job submission and the UI
 - **Job distribution** - Flamenco, extended with custom GPU-aware job types for CUDA and OptiX workflows
@@ -66,9 +66,9 @@ Pangolin separates responsibilities cleanly across distinct services:
 
 ## GPU Job Types
 
-- **CUDA (Linux + WSL2):** Adapted from the [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Issues → [Pangolin tracker](https://github.com/M-Nikox/Pangolin/issues).
+- **CUDA (Linux + WSL2):** Adapted from the [Flamenco community OptiX job type](https://flamenco.blender.org/third-party-jobs/cycles-optix-gpu/) (GPL v3) for CUDA rendering. Issues → [Pholid tracker](https://github.com/M-Nikox/Pholid/issues).
 
-- **OptiX (Linux):** Original community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pangolin. Issues → [Flamenco tracker](https://projects.blender.org/studio/flamenco/issues).
+- **OptiX (Linux):** Original community contribution by [Sybren Stüvel](https://projects.blender.org/dr.sybren) (GPL v3), integrated into Pholid. Issues → [Flamenco tracker](https://projects.blender.org/studio/flamenco/issues).
 
 ---
 
@@ -84,7 +84,7 @@ Pangolin separates responsibilities cleanly across distinct services:
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.  
-Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pangolin/discussions/23).
+Have ideas for v2? [Join the discussion](https://github.com/M-Nikox/Pholid/discussions/23).
 
 ---
 
@@ -101,4 +101,4 @@ Special thanks to [yeezygambino](https://github.com/yeezygambino) for consistent
 
 ---
 
-> Looking for multi-user auth and HTTPS support? See the [v2 branch](https://github.com/M-Nikox/Pangolin/tree/v2-dev).
+> Looking for multi-user auth and HTTPS support? See the [v2 branch](https://github.com/M-Nikox/Pholid/tree/v2-dev).

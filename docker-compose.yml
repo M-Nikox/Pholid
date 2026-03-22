@@ -6,7 +6,7 @@ services:
     build:
       context: ./flamenco/manager
       dockerfile: Dockerfile
-    container_name: pangolin-flamenco-manager
+    container_name: pholid-flamenco-manager
     hostname: flamenco-manager
     restart: unless-stopped
     # Internal port only - accessed through backend API, I wouldn't touch this unless necessary
@@ -18,14 +18,14 @@ services:
       - flamenco-shared:/shared
       - ./flamenco/manager/flamenco-manager.yaml:/flamenco-3.8.2-linux-amd64/flamenco-manager.yaml:ro
     networks:
-      - pangolin-network
+      - pholid-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/v3/configuration"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
-      - "com.pangolin.service=flamenco-manager"
+      - "com.pholid.service=flamenco-manager"
 
   # ============================================
   # FLAMENCO WORKERS - Blender Render Execution
@@ -39,7 +39,7 @@ services:
       flamenco-manager:
         condition: service_healthy
     networks:
-      - pangolin-network
+      - pholid-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - NVIDIA_VISIBLE_DEVICES=all
@@ -65,39 +65,39 @@ services:
               count: all
               capabilities: [gpu, compute, utility]
     labels:
-      - "com.pangolin.service=flamenco-worker"
+      - "com.pholid.service=flamenco-worker"
 
   # ============================================
-  # PANGOLIN BACKEND - Submission API
+  # PHOLID BACKEND - Submission API
   # ============================================
-  pangolin-backend:
+  pholid-backend:
     build:
-      context: ./pangolin-backend
+      context: ./pholid-backend
       dockerfile: Dockerfile
-    container_name: pangolin-backend
+    container_name: pholid-backend
     restart: unless-stopped
     ports:
       - "${WEB_PORT}:8080"
     volumes:
       - flamenco-shared:/shared
     networks:
-      - pangolin-network
+      - pholid-network
     environment:
       - FLAMENCO_MANAGER_URL=http://flamenco-manager:8080
       - STORAGE_ROOT=/shared
-      - PANGOLIN_DELETE_ENABLED=${ENABLE_DELETE:-false} # Don't forget to edit this in the .env, it's set to false by default
+      - PHOLID_DELETE_ENABLED=${ENABLE_DELETE:-false} # Don't forget to edit this in the .env, it's set to false by default
     depends_on:
       flamenco-manager:
         condition: service_healthy
     labels:
-      - "com.pangolin.service=backend"
+      - "com.pholid.service=backend"
 
   # ============================================
   # PROMETHEUS - Metrics Collection
   # ============================================
   prometheus:
     image: prom/prometheus:v3.10.0
-    container_name: pangolin-prometheus
+    container_name: pholid-prometheus
     restart: unless-stopped
     ports:                        # Feel free to remove the ports from Prometheus if you don't need them
       - "${PROMETHEUS_PORT}:9090" # Grafana can handle PromQL testing and offers a PromQL editor as well
@@ -111,21 +111,21 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
-      - pangolin-network
+      - pholid-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
 
   # ============================================
   # GRAFANA - Visualization & Dashboards
   # ============================================
   grafana:
     image: grafana/grafana:12.3.4
-    container_name: pangolin-grafana
+    container_name: pholid-grafana
     restart: unless-stopped
     ports:
       - "${GRAFANA_PORT}:3000"
@@ -142,7 +142,7 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       - prometheus
     healthcheck:
@@ -151,14 +151,14 @@ services:
       timeout: 10s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
 
   # ============================================
   # cADVISOR - Container Metrics
   # ============================================
   cadvisor:
     image: ghcr.io/google/cadvisor:0.56.2
-    container_name: pangolin-cadvisor
+    container_name: pholid-cadvisor
     restart: unless-stopped
     privileged: true
     volumes:
@@ -168,12 +168,12 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     networks:
-      - pangolin-network
+      - pholid-network
     command:
       - '--housekeeping_interval=30s'
       - '--docker_only=true'
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
 
   # ============================================
   # FLAMENCO EXPORTER - Custom Prometheus Exporter
@@ -182,7 +182,7 @@ services:
     build:
       context: ./monitoring/flamenco-exporter
       dockerfile: Dockerfile
-    container_name: pangolin-flamenco-exporter
+    container_name: pholid-flamenco-exporter
     restart: unless-stopped
     expose:
       - "9090"
@@ -199,7 +199,7 @@ services:
       - REQUEST_TIMEOUT=${EXPORTER_REQUEST_TIMEOUT:-10}
       - LOG_LEVEL=${EXPORTER_LOG_LEVEL:-INFO}
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       flamenco-manager:
         condition: service_healthy
@@ -211,7 +211,7 @@ services:
       timeout: 5s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
 
 
 
@@ -222,7 +222,7 @@ services:
     build:
       context: ./monitoring/gpu-exporter
       dockerfile: Dockerfile
-    container_name: pangolin-gpu-exporter
+    container_name: pholid-gpu-exporter
     restart: unless-stopped
     runtime: nvidia
     expose:
@@ -236,7 +236,7 @@ services:
     volumes:
       - /usr/lib/wsl:/usr/lib/wsl:ro
     networks:
-      - pangolin-network
+      - pholid-network
     depends_on:
       - prometheus
     healthcheck:
@@ -245,13 +245,13 @@ services:
       timeout: 5s
       retries: 3
     labels:
-      - "com.pangolin.service=monitoring"
+      - "com.pholid.service=monitoring"
 
 # ============================================
 # NETWORKS
 # ============================================
 networks:
-  pangolin-network:
+  pholid-network:
     driver: bridge
     ipam:
       config:
