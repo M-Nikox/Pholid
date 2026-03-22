@@ -21,22 +21,6 @@ Free and open source, forever.
 
 ---
 
-## Stable Release — v1.x
-
-The v1.x release is a fully hand-written, production-ready single-user render farm manager. No authentication, no dependencies beyond Docker, just deploy and render.
-
-```bash
-git checkout master
-cp .env.example .env   # fill in your values
-docker compose up -d --build
-```
-
-Deployment completes in under one minute. Pholid will be available at `http://localhost:8080`.
-
-> Initial Grafana database creation may take a short moment on first boot.
-
----
-
 ## v2 — Multi-User Auth (In Development)
 
 v2 introduces full multi-user support via Keycloak SSO, per-user job isolation, quota enforcement, avatar profiles, and a complete Prometheus + Grafana observability stack.
