@@ -6,9 +6,8 @@
 <h3 align="center">Distributed GPU-Accelerated Render Orchestrator</h3>
 
 <p align="center">
-  <a href="https://github.com/M-Nikox/Pholid/releases"><img src="https://img.shields.io/github/v/release/M-Nikox/Pholid?label=stable&color=4c9a2a" alt="Stable Release"></a>
   <a href="https://github.com/M-Nikox/Pholid/tree/v2"><img src="https://img.shields.io/badge/v2--dev-in%20development-orange" alt="v2 Dev"></a>
-  <a href="https://github.com/M-Nikox/Pholid/actions"><img src="https://github.com/M-Nikox/Pholid/actions/workflows/ci.yml/badge.svg?branch=v2" alt="Tests"></a>
+  <a href="https://github.com/M-Nikox/Pholid/actions"><img src="https://github.com/M-Nikox/Pholid/actions/workflows/ci.yml/badge.svg?branch=v2-dev" alt="Tests"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
   <img src="https://img.shields.io/badge/blender-GPU%20rendering-e87d0d" alt="Blender">
   <img src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white" alt="Docker">
