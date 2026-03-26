@@ -140,7 +140,7 @@ public class JobsController {
         } catch (Exception e) {
             log.error("Error fetching log for task {}", taskId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to fetch log: " + e.getMessage());
+                    .body("Failed to fetch log");
         }
     }
 
