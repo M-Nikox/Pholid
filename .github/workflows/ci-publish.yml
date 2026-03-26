@@ -1,0 +1,31 @@
+name: CI – Publish Results
+on:
+  workflow_run:
+    workflows: [ "CI" ]
+    types: [ completed ]
+    branches: [ v2-dev ]
+jobs:
+  publish:
+    name: Publish Test Results
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      checks: write
+      pull-requests: read
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-${{ github.event.workflow_run.id }}
+          path: test-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2.23.0
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          event_file: ${{ github.event_path }}
+          event_name: ${{ github.event.workflow_run.event }}
+          files: test-results/**/*.xml
+          comment_mode: off
