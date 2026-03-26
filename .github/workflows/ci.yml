@@ -1,31 +1,23 @@
 name: CI
-
 on:
   push:
     branches: [ v2-dev ]
-  pull_request_target:
+  pull_request:
     branches: [ v2-dev ]
     types: [ opened, synchronize, reopened ]
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   test:
     name: Build & Test
     runs-on: ubuntu-latest
-
     permissions:
-      checks: write
       contents: read
-      pull-requests: read
-
     steps:
-      - name: Checkout PR head
+      - name: Checkout
         uses: actions/checkout@v6.0.2
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 1
 
@@ -40,15 +32,22 @@ jobs:
         working-directory: pholid-backend
         run: mvn test -B --no-transfer-progress
 
-      - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v2.23.0
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          files: pholid-backend/target/surefire-reports/*.xml
-          comment_mode: off
+          name: test-results
+          path: pholid-backend/target/surefire-reports/*.xml
+          retention-days: 1
 
-      - name: Log PR info
-        if: github.event_name == 'pull_request_target'
-        run: |
-          echo "Testing PR #${{ github.event.pull_request.number }} from ${{ github.event.pull_request.head.repo.full_name }}"
-          echo "Commit SHA: ${{ github.event.pull_request.head.sha }}"
+      - name: Save PR metadata
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > pr-number.txt
+
+      - name: Upload PR metadata
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: pr-metadata
+          path: pr-number.txt
+          retention-days: 1
