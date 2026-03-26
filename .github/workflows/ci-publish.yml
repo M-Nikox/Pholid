@@ -3,10 +3,12 @@ on:
   workflow_run:
     workflows: [ "CI" ]
     types: [ completed ]
+    branches: [ master ]
 jobs:
   publish:
     name: Publish Test Results
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       checks: write
       pull-requests: read
@@ -14,7 +16,7 @@ jobs:
       - name: Download test results
         uses: actions/download-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ github.event.workflow_run.id }}
           path: test-results
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
