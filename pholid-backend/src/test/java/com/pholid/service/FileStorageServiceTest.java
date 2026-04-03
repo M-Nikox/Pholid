@@ -23,7 +23,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -201,11 +200,11 @@ class FileStorageServiceTest {
 
     private int countTempZipFiles(String jobId) throws IOException {
         Path tmpDir = Path.of(System.getProperty("java.io.tmpdir"));
-        String fileNamePattern = TEMP_ZIP_PREFIX + Pattern.quote(jobId) + "-.*\\.zip";
+        String filePrefix = TEMP_ZIP_PREFIX + jobId + "-";
         try (var files = Files.list(tmpDir)) {
             return (int) files
-                    .filter(path -> path.getFileName().toString()
-                            .matches(fileNamePattern))
+                    .map(path -> path.getFileName().toString())
+                    .filter(name -> name.startsWith(filePrefix) && name.endsWith(".zip"))
                     .count();
         }
     }
