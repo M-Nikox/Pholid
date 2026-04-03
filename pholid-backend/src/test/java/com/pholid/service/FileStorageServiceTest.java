@@ -32,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class FileStorageServiceTest {
 
+    private static final String TEMP_ZIP_PREFIX = "pholid-render-";
+
     @TempDir
     Path tempDir;
 
@@ -199,7 +201,7 @@ class FileStorageServiceTest {
 
     private int countTempZipFiles(String jobId) throws IOException {
         Path tmpDir = Path.of(System.getProperty("java.io.tmpdir"));
-        String fileNamePattern = "pholid-render-" + Pattern.quote(jobId) + "-.*\\.zip";
+        String fileNamePattern = TEMP_ZIP_PREFIX + Pattern.quote(jobId) + "-.*\\.zip";
         try (var files = Files.list(tmpDir)) {
             return (int) files
                     .filter(path -> path.getFileName().toString()
