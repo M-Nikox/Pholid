@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -97,14 +98,17 @@ public class FileStorageService {
             try (InputStream in = Files.newInputStream(tempZip)) {
                 in.transferTo(response.getOutputStream());
             }
-        } catch (IOException e) {
-            log.error("Error creating zip for job {}", jobId, e);
+        } catch (IOException | UncheckedIOException e) {
+            IOException ioException = e instanceof UncheckedIOException unchecked
+                    ? unchecked.getCause()
+                    : (IOException) e;
+            log.error("Error creating zip for job {}", jobId, ioException);
             if (!response.isCommitted()) {
                 response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         "Failed to create download archive (file read/write error).");
                 return;
             }
-            throw e;
+            throw ioException;
         } finally {
             if (tempZip != null) {
                 try {
