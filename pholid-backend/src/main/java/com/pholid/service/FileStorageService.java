@@ -83,10 +83,11 @@ public class FileStorageService {
             tempZip = Files.createTempFile("pholid-render-" + jobId + "-", ".zip");
             try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(tempZip));
                  Stream<Path> files = Files.list(outputDir)) {
-
-                for (Path path : files.filter(Files::isRegularFile)
+                Iterator<Path> iterator = files.filter(Files::isRegularFile)
                         .limit(props.download().maxFiles())
-                        .toList()) {
+                        .iterator();
+                while (iterator.hasNext()) {
+                    Path path = iterator.next();
                     zipFile(path, zos);
                 }
             }
