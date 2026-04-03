@@ -244,21 +244,11 @@ class FlamencoMetricsCollector:
         if workers is None:
             logger.warning("Failed to fetch workers")
             self._reset_worker_metrics()
-            worker_total.set(0)
-            worker_status.clear()
-            worker_active.set(0)
-            worker_idle.set(0)
-            worker_offline.set(0)
             return
 
         if not workers:
             logger.info("No workers returned; resetting worker metrics")
             self._reset_worker_metrics()
-            worker_total.set(0)
-            worker_status.clear()
-            worker_active.set(0)
-            worker_idle.set(0)
-            worker_offline.set(0)
             return
         worker_total.set(len(workers))
 
