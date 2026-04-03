@@ -187,7 +187,7 @@ class FlamencoMetricsCollector:
         farm_status_raw.clear()
         farm_status.labels(status='unknown').set(0)
         farm_status_raw.labels(status='unknown').set(1)
-        
+
     def collect_job_metrics(self, jobs: list):
         """Collect job-related metrics from pre-fetched job list"""
         logger.info("Collecting job metrics...")
