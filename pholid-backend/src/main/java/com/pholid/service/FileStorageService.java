@@ -101,7 +101,7 @@ public class FileStorageService {
             log.error("Error creating zip for job {}", jobId, e);
             if (!response.isCommitted()) {
                 response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        "Failed to create archive for download.");
+                        "Failed to create download archive (file read/write error).");
                 return;
             }
             throw e;

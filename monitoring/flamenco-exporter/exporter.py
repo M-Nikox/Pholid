@@ -269,7 +269,7 @@ class FlamencoMetricsCollector:
             worker_id = worker.get('id', 'unknown')
             worker_name = worker.get('name', 'unknown')
 
-            # last_seen timestamp
+            # last_seen timestamp (ISO 8601 value returned by Flamenco)
             last_seen_str = worker.get('last_seen')
             if last_seen_str:
                 try:
