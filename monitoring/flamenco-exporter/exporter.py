@@ -512,7 +512,7 @@ class FlamencoMetricsCollector:
 
             logger.info(f"Metrics collection completed in {duration:.2f}s")
 
-        except (RequestException, ValueError, KeyError, TypeError) as e:
+        except Exception as e:
             logger.error(f"Error collecting metrics: {e}", exc_info=True)
             self._reset_worker_metrics()
             self._reset_task_metrics()
