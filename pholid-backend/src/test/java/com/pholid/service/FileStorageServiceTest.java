@@ -11,11 +11,20 @@ import com.pholid.exception.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.Assumptions;
+import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -100,6 +109,68 @@ class FileStorageServiceTest {
         assertThat(status.get("fileCount")).isEqualTo(3L);
     }
 
+    // streamZip
+
+    @Test
+    void streamZip_success_returnsZipAndCleansTempFile() throws IOException {
+        String jobId = "a1b2c3d4e5f60718";
+        Path outputDir = service.getJobRoot().resolve(jobId).resolve("output");
+        Files.createDirectories(outputDir);
+        Files.writeString(outputDir.resolve("000001.png"), "frame-1");
+        Files.writeString(outputDir.resolve("000002.png"), "frame-2");
+
+        int before = countTempZipFiles(jobId);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        service.streamZip(jobId, response);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getContentType()).isEqualTo("application/zip");
+        assertThat(response.getHeader("Content-Disposition"))
+                .isEqualTo("attachment; filename=\"render_" + jobId + ".zip\"");
+
+        Set<String> entries = new HashSet<>();
+        try (ZipInputStream zis = new ZipInputStream(
+                new ByteArrayInputStream(response.getContentAsByteArray()))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                entries.add(entry.getName());
+            }
+        }
+        assertThat(entries).containsExactlyInAnyOrder("000001.png", "000002.png");
+        assertThat(countTempZipFiles(jobId)).isEqualTo(before);
+    }
+
+    @Test
+    void streamZip_zipCreationFailure_returns500AndCleansTempFile() throws IOException {
+        Assumptions.assumeTrue(
+                FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                "POSIX permissions are required for this test");
+
+        String jobId = "b1b2c3d4e5f60718";
+        Path outputDir = service.getJobRoot().resolve(jobId).resolve("output");
+        Files.createDirectories(outputDir);
+        Path unreadable = outputDir.resolve("000001.png");
+        Files.writeString(unreadable, "frame-1");
+        Files.setPosixFilePermissions(unreadable, Set.of());
+
+        int before = countTempZipFiles(jobId);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        try {
+            service.streamZip(jobId, response);
+        } finally {
+            Files.setPosixFilePermissions(unreadable, Set.of(
+                    PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.OWNER_WRITE));
+        }
+
+        assertThat(response.getStatus()).isEqualTo(500);
+        assertThat(response.getErrorMessage())
+                .isEqualTo("Failed to create download archive (file read/write error).");
+        assertThat(countTempZipFiles(jobId)).isEqualTo(before);
+    }
+
     // deleteDirectory
 
     @Test
@@ -123,5 +194,15 @@ class FileStorageServiceTest {
         service.deleteDirectory(emptyDir);
 
         assertThat(emptyDir).doesNotExist();
+    }
+
+    private int countTempZipFiles(String jobId) throws IOException {
+        Path tmpDir = Path.of(System.getProperty("java.io.tmpdir"));
+        try (var files = Files.list(tmpDir)) {
+            return (int) files
+                    .filter(path -> path.getFileName().toString()
+                            .matches("pholid-render-" + jobId + "-.*\\.zip"))
+                    .count();
+        }
     }
 }
