@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -77,18 +78,40 @@ public class FileStorageService {
             return;
         }
 
-        response.setContentType("application/zip");
-        response.setHeader("Content-Disposition", "attachment; filename=\"render_" + jobId + ".zip\"");
+        Path tempZip = null;
+        try {
+            tempZip = Files.createTempFile("pholid-render-" + jobId + "-", ".zip");
+            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(tempZip));
+                 Stream<Path> files = Files.list(outputDir)) {
 
-        try (ZipOutputStream zos = new ZipOutputStream(response.getOutputStream());
-             Stream<Path> files = Files.list(outputDir)) {
+                for (Path path : files.filter(Files::isRegularFile)
+                        .limit(props.download().maxFiles())
+                        .toList()) {
+                    zipFile(path, zos);
+                }
+            }
 
-            files.filter(Files::isRegularFile)
-                    .limit(props.download().maxFiles())
-                    .forEach(path -> zipFile(path, zos));
-
+            response.setContentType("application/zip");
+            response.setHeader("Content-Disposition", "attachment; filename=\"render_" + jobId + ".zip\"");
+            try (InputStream in = Files.newInputStream(tempZip)) {
+                in.transferTo(response.getOutputStream());
+            }
         } catch (IOException e) {
             log.error("Error creating zip for job {}", jobId, e);
+            if (!response.isCommitted()) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Failed to create archive for download.");
+                return;
+            }
+            throw e;
+        } finally {
+            if (tempZip != null) {
+                try {
+                    Files.deleteIfExists(tempZip);
+                } catch (IOException deleteEx) {
+                    log.warn("Failed to delete temp zip {}", tempZip, deleteEx);
+                }
+            }
         }
     }
 
@@ -123,13 +146,9 @@ public class FileStorageService {
         }
     }
 
-    private void zipFile(Path file, ZipOutputStream zos) {
-        try {
-            zos.putNextEntry(new ZipEntry(file.getFileName().toString()));
-            Files.copy(file, zos);
-            zos.closeEntry();
-        } catch (IOException e) {
-            log.warn("Failed to add {} to zip: {}", file, e.getMessage());
-        }
+    private void zipFile(Path file, ZipOutputStream zos) throws IOException {
+        zos.putNextEntry(new ZipEntry(file.getFileName().toString()));
+        Files.copy(file, zos);
+        zos.closeEntry();
     }
 }

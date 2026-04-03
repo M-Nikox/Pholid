@@ -8,10 +8,12 @@ import os
 import time
 import logging
 import random
+from datetime import datetime
 import requests
 from prometheus_client import start_http_server, Gauge, Counter, Histogram, Info
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, REGISTRY
 from typing import Dict, List, Optional
+from requests import RequestException
 
 FLAMENCO_URL = os.getenv('FLAMENCO_API_URL', 'http://flamenco-manager:8080')
 EXPORTER_PORT = int(os.getenv('EXPORTER_PORT', '9090'))
@@ -153,6 +155,29 @@ class FlamencoMetricsCollector:
         self.api = api_client
         self.last_task_scrape = 0
         self.last_worker_scrape = 0
+
+    def _reset_worker_metrics(self):
+        worker_total.set(0)
+        worker_status.clear()
+        worker_active.set(0)
+        worker_idle.set(0)
+        worker_offline.set(0)
+        worker_last_seen.clear()
+        worker_cpu_usage.clear()
+        worker_memory_usage.clear()
+
+    def _reset_task_metrics(self):
+        task_sampling_active.set(0)
+        task_sample_size.set(0)
+        jobs_sampled.set(0)
+        task_total.set(0)
+        task_status.clear()
+        task_pipeline_sampled.clear()
+        task_completion_rate.set(0)
+        task_failure_rate.set(0)
+
+    def _reset_worker_tag_metrics(self):
+        worker_tag_count.clear()
         
     def collect_job_metrics(self, jobs: list):
         """Collect job-related metrics from pre-fetched job list"""
@@ -218,6 +243,7 @@ class FlamencoMetricsCollector:
         workers = self.api.get_workers()
         if workers is None:
             logger.warning("Failed to fetch workers")
+            self._reset_worker_metrics()
             return
 
         worker_total.set(len(workers))
@@ -247,7 +273,6 @@ class FlamencoMetricsCollector:
             last_seen_str = worker.get('last_seen')
             if last_seen_str:
                 try:
-                    from datetime import datetime, timezone
                     # Flamenco returns ISO 8601 with timezone
                     dt = datetime.fromisoformat(last_seen_str.replace('Z', '+00:00'))
                     worker_last_seen.labels(
@@ -255,7 +280,7 @@ class FlamencoMetricsCollector:
                         worker_name=worker_name,
                         worker_num=str(worker_num)
                     ).set(dt.timestamp())
-                except Exception as e:
+                except ValueError as e:
                     logger.warning(f"Could not parse last_seen for worker {worker_name}: {e}")
 
             # CPU/memory from cAdvisor via Prometheus
@@ -309,7 +334,7 @@ class FlamencoMetricsCollector:
                 worker_memory_usage.labels(worker_id=worker_id, worker_name=worker_name, worker_num=container_num).set(float(mem_results[0]['value'][1]))
             else:
                 logger.warning(f"No cAdvisor memory data for flamenco-worker container_number={container_num}")
-        except Exception as e:
+        except (RequestException, ValueError, KeyError, TypeError) as e:
             logger.warning(f"Failed to fetch cAdvisor metrics for worker {worker_num}: {e}")
 
 
@@ -326,7 +351,7 @@ class FlamencoMetricsCollector:
 
         if not active_jobs:
             logger.warning("No active jobs available for task sampling")
-            task_sampling_active.set(0)
+            self._reset_task_metrics()
             return
         
         jobs = active_jobs
@@ -407,7 +432,7 @@ class FlamencoMetricsCollector:
             else:
                 farm_status.labels(status='unknown').set(0)
                 farm_status_raw.labels(status='unknown').set(1)
-        except Exception as e:
+        except (RequestException, ValueError, KeyError, TypeError) as e:
             logger.error(f"Farm status check failed: {e}")
             farm_status.clear()
             farm_status_raw.clear()
@@ -420,10 +445,12 @@ class FlamencoMetricsCollector:
 
         tags = self.api.get_worker_tags()
         if not tags:
+            self._reset_worker_tag_metrics()
             return
 
         workers = self.api.get_workers()
         if not workers:
+            self._reset_worker_tag_metrics()
             return
 
         # Build tag_id -> tag_name map
@@ -476,8 +503,15 @@ class FlamencoMetricsCollector:
 
             logger.info(f"Metrics collection completed in {duration:.2f}s")
 
-        except Exception as e:
+        except (RequestException, ValueError, KeyError, TypeError) as e:
             logger.error(f"Error collecting metrics: {e}", exc_info=True)
+            self._reset_worker_metrics()
+            self._reset_task_metrics()
+            self._reset_worker_tag_metrics()
+            farm_status.clear()
+            farm_status_raw.clear()
+            farm_status.labels(status='unknown').set(0)
+            farm_status_raw.labels(status='unknown').set(1)
 
 
 def main():
