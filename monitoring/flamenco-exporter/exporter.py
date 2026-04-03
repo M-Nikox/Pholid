@@ -471,6 +471,10 @@ class FlamencoMetricsCollector:
             self._reset_worker_tag_metrics()
             return
 
+        # Clear all previous label series before setting new counts.
+        # This prevents stale tag_name labels from persisting after tags
+        # are removed or renamed upstream.
+        worker_tag_count.clear()
         # Build tag_id -> tag_name map
         tag_names = {t['id']: t.get('name', 'unknown') for t in tags if 'id' in t}
 
