@@ -259,8 +259,13 @@ class FlamencoMetricsCollector:
             logger.info("No workers returned; resetting worker metrics")
             self._reset_worker_metrics()
             return
+
         worker_total.set(len(workers))
 
+        # Clear stale per-worker label series before repopulating from the current worker list
+        worker_last_seen.clear()
+        worker_cpu_usage.clear()
+        worker_memory_usage.clear()
         status_counts = {}
         active_count = 0
         idle_count = 0
