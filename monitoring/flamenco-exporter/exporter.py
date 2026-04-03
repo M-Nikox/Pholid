@@ -276,16 +276,21 @@ class FlamencoMetricsCollector:
             # last_seen timestamp (ISO 8601 value returned by Flamenco)
             last_seen_str = worker.get('last_seen')
             if last_seen_str:
-                try:
-                    # Flamenco returns ISO 8601 with timezone
-                    dt = datetime.fromisoformat(last_seen_str.replace('Z', '+00:00'))
-                    worker_last_seen.labels(
-                        worker_id=worker_id,
-                        worker_name=worker_name,
-                        worker_num=str(worker_num)
-                    ).set(dt.timestamp())
-                except ValueError as e:
-                    logger.warning(f"Could not parse last_seen for worker {worker_name}: {e}")
+                if isinstance(last_seen_str, str):
+                    try:
+                        # Flamenco returns ISO 8601 with timezone
+                        dt = datetime.fromisoformat(last_seen_str.replace('Z', '+00:00'))
+                        worker_last_seen.labels(
+                            worker_id=worker_id,
+                            worker_name=worker_name,
+                            worker_num=str(worker_num)
+                        ).set(dt.timestamp())
+                    except ValueError as e:
+                        logger.warning(f"Could not parse last_seen for worker {worker_name}: {e}")
+                else:
+                    logger.warning(
+                        f"Invalid last_seen type for worker {worker_name}: {type(last_seen_str).__name__}"
+                    )
 
             # CPU/memory from cAdvisor via Prometheus
             self._collect_worker_cadvisor_metrics(worker_id, worker_name, worker_num)
