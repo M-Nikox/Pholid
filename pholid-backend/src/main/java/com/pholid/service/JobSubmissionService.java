@@ -94,16 +94,22 @@ public class JobSubmissionService {
     // ============================
 
     private SubmissionResult submitBlend(MultipartFile file,
-                                          String projectName,
-                                          String frames,
-                                          int totalFrames,
-                                          int priority,
-                                          String computeMode) throws IOException {
+                                           String projectName,
+                                           String frames,
+                                           int totalFrames,
+                                           int priority,
+                                           String computeMode) throws IOException {
         validateBlendFile(file);
         String jobId = createBlendJobDirectory(file);
-        sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
-                storageService.getJobRoot().resolve(jobId).resolve("input.blend"));
-        return SubmissionResult.clean(jobId);
+        Path jobDir = storageService.getJobRoot().resolve(jobId);
+        try {
+            sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
+                    jobDir.resolve("input.blend"));
+            return SubmissionResult.clean(jobId);
+        } catch (RuntimeException e) {
+            cleanupJobDirectory(jobId, jobDir);
+            throw e;
+        }
     }
 
     // ============================
@@ -134,13 +140,18 @@ public class JobSubmissionService {
         ZipSubmissionService.ExtractionResult result =
                 zipService.extractAndLocate(file, blendFileName, jobDir);
 
-        sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
-                result.blendFilePath());
+        try {
+            sendToManager(jobId, projectName, frames, totalFrames, priority, computeMode,
+                    result.blendFilePath());
 
-        if (result.warnings().isEmpty()) {
-            return SubmissionResult.clean(jobId);
-        } else {
-            return SubmissionResult.withWarnings(jobId, result.warnings());
+            if (result.warnings().isEmpty()) {
+                return SubmissionResult.clean(jobId);
+            } else {
+                return SubmissionResult.withWarnings(jobId, result.warnings());
+            }
+        } catch (RuntimeException e) {
+            cleanupJobDirectory(jobId, jobDir);
+            throw e;
         }
     }
 
@@ -343,5 +354,16 @@ public class JobSubmissionService {
         if (zstd) return new ZstdInputStream(in);
         if (gzip) return new GZIPInputStream(in);
         return in;
+    }
+
+    private void cleanupJobDirectory(String jobId, Path jobDir) {
+        try {
+            if (Files.exists(jobDir)) {
+                storageService.deleteDirectory(jobDir);
+                log.warn("Rolled back local files for failed submission {}", jobId);
+            }
+        } catch (IOException cleanupError) {
+            log.error("Failed to cleanup job directory for {}", jobId, cleanupError);
+        }
     }
 }

@@ -25,7 +25,9 @@ const jobPolling = (() => {
         // Persist state so polling resumes if the page is closed and reopened
         try {
             sessionStorage.setItem('pholid:activeJob', JSON.stringify({ jobId, expectedFrames, projectName: project }));
-        } catch (e) { /* sessionStorage unavailable */ }
+        } catch (e) {
+            console.debug('Session storage unavailable; polling state persistence disabled.', e);
+        }
 
         clearInterval(pollInterval);
         pollInterval = setInterval(checkStatus, 3000);
@@ -57,7 +59,11 @@ const jobPolling = (() => {
         clearInterval(pollInterval);
         currentJobId = null;
 
-        try { sessionStorage.removeItem('pholid:activeJob'); } catch (e) {}
+        try {
+            sessionStorage.removeItem('pholid:activeJob');
+        } catch (e) {
+            console.debug('Session storage unavailable; could not clear persisted job state.', e);
+        }
 
         console.log(`✅ Job complete: ${projectName} (${totalFrames} frames)`);
 
@@ -75,7 +81,11 @@ const jobPolling = (() => {
     function stop() {
         clearInterval(pollInterval);
         currentJobId = null;
-        try { sessionStorage.removeItem('pholid:activeJob'); } catch (e) {}
+        try {
+            sessionStorage.removeItem('pholid:activeJob');
+        } catch (e) {
+            console.debug('Session storage unavailable; could not clear persisted job state.', e);
+        }
     }
 
     function init() {
@@ -94,7 +104,9 @@ const jobPolling = (() => {
                 console.log(`🔄 Resuming poll for in-flight job ${jobId}`);
                 startPolling(jobId, expectedFrames, projectName);
             }
-        } catch (e) { /* corrupt or unavailable */ }
+        } catch (e) {
+            console.debug('Could not restore polling state from session storage.', e);
+        }
     }
 
     return { init };

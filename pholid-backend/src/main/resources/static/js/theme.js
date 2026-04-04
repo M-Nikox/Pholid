@@ -95,7 +95,9 @@ const themeModule = (() => {
         try {
             const saved = JSON.parse(localStorage.getItem('theme-custom'));
             if (saved?.accent && saved?.bg && saved?.text) return saved;
-        } catch (_) {}
+        } catch (e) {
+            console.debug('Failed to read custom theme values, using defaults.', e);
+        }
         return { ...CUSTOM_DEFAULTS };
     }
 
